@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="timetable-header">
+            <h2>FIRST SEMESTER TIMETABLE SECTION WISE: 2025 - 26</h2>
+        </div>
+        {% for class_name, grid in timetable_data.items() %}
+        <div class="card timetable-card" style="overflow-x:auto; margin-bottom:32px;">
+            <h3 class="card-title">{{ class_name }}</h3>
+            <table class="timetable-table timetable-colored">
+                <thead>
+                    <tr>
+                        <th>Day/Time</th>
+                        {% for slot in time_slots %}
+                        <th>{{ slot[0] }}-{{ slot[1] }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in days %}
+                    <tr>
+                        <td><b>{{ day }}</b></td>
+                        {% for slot in time_slots %}
+                        {% set cell = grid[slot][day] %}
+                        <td class="{{ cell|course_color_class }}">
+                            {% if cell %}{{ cell|safe }}{% else %}<span style="color:#ccc;">-</span>{% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="legend">
+                <h4>Legend</h4>
+                <table class="legend-table">
+                    <tr><th>Course</th><th>Room</th><th>Instructor</th></tr>
+                    {% for slot in time_slots %}
+                        {% for day in days %}
+                            {% set cell = grid[slot][day] %}
+                            {% if cell %}
+                                {% set parts = cell.split('<br>') %}
+                                <tr>
+                                    <td><span class="legend-color {{ cell|course_color_class }}"></span> {{ parts[0] }}</td>
+                                    <td>{{ parts[2] }}</td>
+                                    <td>{{ parts[1] }}</td>
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+        <a href="/" class="btn gradient-btn" style="margin-top:24px;display:inline-block;">Back to Home</a>
+    </div>
+{% endblock content %}

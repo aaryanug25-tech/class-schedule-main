@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="content-section">
+    <h1>Teachers Directory</h1>
+    <div class="teacher-grid">
+        {% for teacher in get_teachers() %}
+        <div class="teacher-card">
+            <div class="teacher-icon">
+                <i class="fas fa-chalkboard-teacher"></i>
+            </div>
+            <div class="teacher-info">
+                <h3 class="teacher-name">{{ teacher.name }}</h3>
+                <p class="teacher-subject">{{ teacher.subject }}</p>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-users-slash"></i>
+            <p>No teachers registered.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

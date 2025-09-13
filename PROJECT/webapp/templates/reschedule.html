@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container">
+    <h1 class="main-title">Reschedule Class</h1>
+    <div class="card">
+        <form method="post">
+            <div class="input-row">
+                <label>Class Group:</label>
+                <select name="class_id" required>
+                    {% for c in classes %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+                <label>Course:</label>
+                <select name="course_id" required>
+                    {% for course in courses %}
+                    <option value="{{ course.id }}">{{ course.name }}</option>
+                    {% endfor %}
+                </select>
+                <button class="btn gradient-btn" type="submit">Suggest Options</button>
+            </div>
+        </form>
+        {% if options %}
+        <h3 class="card-title" style="margin-top:24px;">Available Reschedule Options</h3>
+        <ul>
+            {% for opt in options %}
+            <li>Day: {{ opt[0] }}, Time: {{ opt[1] }}-{{ opt[2] }}, Room: {{ opt[3] }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    <a href="/" class="btn gradient-btn" style="margin-top:24px;display:inline-block;">Back to Home</a>
+</div>
+{% endblock %}
+</html>

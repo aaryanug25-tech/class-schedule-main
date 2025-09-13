@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="main-title">Admin Dashboard</h1>
+    
+    <div class="card">
+        <h2>User Management</h2>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Admin Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{% if user.is_admin() %}Yes{% else %}No{% endif %}</td>
+                    <td>
+                        <form action="{{ url_for('admin_route') }}" method="post" style="display: inline;">
+                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                            <input type="hidden" name="action" value="toggle_admin">
+                            <button type="submit" class="btn small">
+                                {% if user.is_admin() %}Remove Admin{% else %}Make Admin{% endif %}
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock content %}

@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="main-title">Cancel Class</h1>
+    <div class="card">
+        <form action="{{ url_for('cancel_class') }}" method="post">
+            <div class="input-row">
+                <label>Select Class:</label>
+                <select name="class_id" required>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="input-row">
+                <label>Select Course:</label>
+                <select name="course_id" required>
+                    {% for course in courses %}
+                    <option value="{{ course.id }}">{{ course.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="input-row">
+                <label>Date:</label>
+                <input type="date" name="date" required>
+            </div>
+            <div class="input-row">
+                <label>Reason for Cancellation:</label>
+                <textarea name="reason" required></textarea>
+            </div>
+            <button class="btn gradient-btn" type="submit">Cancel Class</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

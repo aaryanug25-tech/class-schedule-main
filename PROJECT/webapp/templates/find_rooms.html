@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container">
+    <h1 class="main-title">Find Available Rooms</h1>
+    <div class="card">
+        <form method="post">
+            <div class="input-row">
+                <label>Day:</label>
+                <select name="day" required>
+                    <option>Monday</option>
+                    <option>Tuesday</option>
+                    <option>Wednesday</option>
+                    <option>Thursday</option>
+                    <option>Friday</option>
+                </select>
+                <label>Start:</label>
+                <input type="time" name="start_time" required>
+                <label>End:</label>
+                <input type="time" name="end_time" required>
+                <button class="btn gradient-btn" type="submit">Find</button>
+            </div>
+        </form>
+        {% if available %}
+        <h3 class="card-title" style="margin-top:24px;">Available Rooms</h3>
+        <ul>
+            {% for room in available %}
+            <li>{{ room.name }} (Capacity: {{ room.capacity }})</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    <a href="/" class="btn gradient-btn" style="margin-top:24px;display:inline-block;">Back to Home</a>
+</div>
+{% endblock %}
+</html>

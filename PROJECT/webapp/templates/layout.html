@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Class Schedule Manager</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        
+</head>
+<body>
+
+        <div class="github-topbar"></div>
+        <nav class="main-topbar">
+                        <div class="topbar-left">
+                                <a href="{{ url_for('index') }}" class="topbar-logo" aria-label="Dashboard" title="Dashboard">
+                                    <span class="logo-icon">
+                                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <rect x="3" y="5" width="18" height="16" rx="3" fill="#a371f7"/>
+                                            <rect x="3" y="5" width="18" height="16" rx="3" stroke="#c9d1d9" stroke-width="1.5"/>
+                                            <rect x="7" y="2" width="2" height="4" rx="1" fill="#c9d1d9"/>
+                                            <rect x="15" y="2" width="2" height="4" rx="1" fill="#c9d1d9"/>
+                                            <rect x="7.5" y="10.5" width="2" height="2" rx="0.7" fill="#161b22"/>
+                                            <rect x="11.5" y="10.5" width="2" height="2" rx="0.7" fill="#161b22"/>
+                                            <rect x="15.5" y="10.5" width="2" height="2" rx="0.7" fill="#161b22"/>
+                                        </svg>
+                                    </span>
+                                </a>
+                        </div>
+            <div class="topbar-right">
+                {% if current_user %}
+                    <a href="{{ url_for('logout') }}" class="topbar-link">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="topbar-link">Login</a>
+                    <a href="{{ url_for('register') }}" class="topbar-link">Register</a>
+                {% endif %}
+            </div>
+        </nav>
+
+    <!-- Sidebar always visible, no toggle button -->
+
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1 class="sidebar-logo">Class Scheduler</h1>
+        </div>
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>
+                    <span class="icon"><i class="fas fa-home"></i></span>
+                    Dashboard
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('generate_timetable_route') }}" {% if request.endpoint == 'generate_timetable_route' %}class="active"{% endif %}>
+                    <span class="icon"><i class="fas fa-calendar-alt"></i></span>
+                    Generate Timetable
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('find_rooms_route') }}" {% if request.endpoint == 'find_rooms_route' %}class="active"{% endif %}>
+                    <span class="icon"><i class="fas fa-search"></i></span>
+                    Find Available Rooms
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('reschedule_route') }}" {% if request.endpoint == 'reschedule_route' %}class="active"{% endif %}>
+                    <span class="icon"><i class="fas fa-exchange-alt"></i></span>
+                    Reschedule Class
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('cancel_class') }}" {% if request.endpoint == 'cancel_class' %}class="active"{% endif %}>
+                    <span class="icon"><i class="fas fa-ban"></i></span>
+                    Cancel Class
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('change_room') }}" {% if request.endpoint == 'change_room' %}class="active"{% endif %}>
+                    <span class="icon"><i class="fas fa-door-open"></i></span>
+                    Change Room
+                </a>
+            </li>
+            {% if current_user and current_user.is_admin %}
+            <li>
+                <a href="{{ url_for('admin_route') }}" {% if request.endpoint == 'admin_route' %}class="active"{% endif %}>
+                    <span class="icon"><i class="fas fa-cog"></i></span>
+                    Admin Settings
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+        <div class="sidebar-section">
+            <a href="{{ url_for('teachers') }}" class="sidebar-button">
+                <span class="icon"><i class="fas fa-chalkboard-teacher"></i></span>
+                View Teachers Directory
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- No sidebar JS needed -->
+</body>
+</html>

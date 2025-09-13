@@ -1,0 +1,118 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <h1 class="main-title" style="text-align:center;">Welcome to Class Schedule Manager</h1>
+
+
+        <h2 class="card-title">Add Classroom</h2>
+        <form method="post" action="{{ url_for('add_classroom_route') }}">
+            <div class="input-row">
+                <input type="text" name="name" placeholder="Classroom Name" required />
+                <input type="number" name="capacity" placeholder="Capacity" required />
+                <button type="submit" class="btn gradient-btn">Add Classroom</button>
+            </div>
+        </form>
+        <form method="post" action="{{ url_for('add_classroom_route') }}" enctype="multipart/form-data" style="margin-bottom:8px;">
+            <div class="input-row">
+                                <label style="min-width:120px;">CSV:</label>
+                                <div class="file-upload-group">
+                                    <input type="file" name="csv_file" accept=".csv" required class="file-input" id="classroom-csv" style="display:none;" onchange="document.getElementById('classroom-csv-label').innerText = this.files[0]?.name || 'No file chosen'">
+                                    <button type="button" class="btn gradient-btn file-btn" onclick="document.getElementById('classroom-csv').click()">Browse...</button>
+                                    <span id="classroom-csv-label" class="file-label">No file chosen</span>
+                                </div>
+                                <button type="submit" class="btn gradient-btn">Upload CSV</button>
+            </div>
+                <div class="csv-format">
+                    <p>Format:</p>
+                        <code>name,capacity<br>
+    Room 101,30<br>
+    Room 102,40</code>
+                </div>
+        </form>
+
+
+        <h2 class="card-title">Add Teacher</h2>
+        <form method="post" action="{{ url_for('add_teacher_route') }}">
+            <div class="input-row">
+                <input type="text" name="name" placeholder="Teacher Name" required />
+                <input type="text" name="subject" placeholder="Subject(s)" required />
+                <button type="submit" class="btn gradient-btn">Add Teacher</button>
+            </div>
+        </form>
+        <form method="post" action="{{ url_for('add_teacher_route') }}" enctype="multipart/form-data" style="margin-bottom:8px;">
+            <div class="input-row">
+                                <label style="min-width:120px;">CSV:</label>
+                                <div class="file-upload-group">
+                                    <input type="file" name="csv_file" accept=".csv" required class="file-input" id="teacher-csv" style="display:none;" onchange="document.getElementById('teacher-csv-label').innerText = this.files[0]?.name || 'No file chosen'">
+                                    <button type="button" class="btn gradient-btn file-btn" onclick="document.getElementById('teacher-csv').click()">Browse...</button>
+                                    <span id="teacher-csv-label" class="file-label">No file chosen</span>
+                                </div>
+                                <button type="submit" class="btn gradient-btn">Upload CSV</button>
+            </div>
+                <div class="csv-format">
+                    <p>Format:</p>
+                        <code>name,subject<br>
+    Jane Doe,Mathematics<br>
+    John Smith,Physics</code>
+                </div>
+        </form>
+
+
+        <h2 class="card-title">Add Course</h2>
+        <form method="post" action="{{ url_for('add_course_route') }}">
+            <div class="input-row">
+                <input type="text" name="name" placeholder="Course Name" required />
+                <button type="submit" class="btn gradient-btn">Add Course</button>
+            </div>
+        </form>
+        <form method="post" action="{{ url_for('add_course_route') }}" enctype="multipart/form-data" style="margin-bottom:8px;">
+            <div class="input-row">
+                                <label style="min-width:120px;">CSV:</label>
+                                <div class="file-upload-group">
+                                    <input type="file" name="csv_file" accept=".csv" required class="file-input" id="course-csv" style="display:none;" onchange="document.getElementById('course-csv-label').innerText = this.files[0]?.name || 'No file chosen'">
+                                    <button type="button" class="btn gradient-btn file-btn" onclick="document.getElementById('course-csv').click()">Browse...</button>
+                                    <span id="course-csv-label" class="file-label">No file chosen</span>
+                                </div>
+                                <button type="submit" class="btn gradient-btn">Upload CSV</button>
+            </div>
+                <div class="csv-format">
+                    <p>Format:</p>
+                        <code>name<br>
+    Calculus I<br>
+    Physics II</code>
+                </div>
+        </form>
+
+
+        <h2 class="card-title">Add Class Group</h2>
+        <form method="post" action="{{ url_for('add_class_route') }}">
+            <div class="input-row">
+                <input type="text" name="name" placeholder="Class Group Name (e.g., CSE-A)" required />
+                <button type="submit" class="btn gradient-btn">Add Class</button>
+            </div>
+        </form>
+        <form method="post" action="{{ url_for('add_class_route') }}" enctype="multipart/form-data" style="margin-bottom:8px;">
+            <div class="input-row">
+                                <label style="min-width:120px;">CSV:</label>
+                                <div class="file-upload-group">
+                                    <input type="file" name="csv_file" accept=".csv" required class="file-input" id="classgroup-csv" style="display:none;" onchange="document.getElementById('classgroup-csv-label').innerText = this.files[0]?.name || 'No file chosen'">
+                                    <button type="button" class="btn gradient-btn file-btn" onclick="document.getElementById('classgroup-csv').click()">Browse...</button>
+                                    <span id="classgroup-csv-label" class="file-label">No file chosen</span>
+                                </div>
+                                <button type="submit" class="btn gradient-btn">Upload CSV</button>
+            </div>
+                <div class="csv-format">
+                    <p>Format:</p>
+                        <code>name<br>
+    CSE-A<br>
+    ECE-B</code>
+                </div>
+        </form>
+
+    <div class="input-row" style="margin-top:24px; flex-wrap:wrap; gap:12px;">
+        <a class="btn gradient-btn" href="{{ url_for('generate_timetable_route') }}">Generate Timetable</a>
+        <a class="btn gradient-btn" href="{{ url_for('find_rooms_route') }}">Find Available Rooms</a>
+        <a class="btn gradient-btn" href="{{ url_for('reschedule_route') }}">Reschedule Class</a>
+    </div>
+ 
+{% endblock %}
