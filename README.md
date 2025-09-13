@@ -102,9 +102,7 @@ PROJECT/
 
 ## Notes
 - All data is stored locally in `scheduler.db`. To start fresh, delete this file.
-- To collaborate, push your code to GitHub and share the repo link with your team.
-- For deployment instructions (cloud, public access), see the main app or ask for help.
-- The UI is now a modern GitHub-style dark theme (not BASIC® Culture Manual).
+
 
 ## License
 MIT License
