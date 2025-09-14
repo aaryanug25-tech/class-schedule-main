@@ -1,7 +1,67 @@
 {% extends "layout.html" %}
 
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='chart.js') }}"></script>
+{% endblock %}
+
 {% block content %}
     <h1 class="main-title" style="text-align:center;">Welcome to Class Schedule Manager</h1>
+    
+    <!-- Dashboard Stats -->
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <i class="fas fa-chalkboard-teacher"></i>
+            <div class="stat-content">
+                <span class="stat-value">{{ get_teachers()|length }}</span>
+                <span class="stat-label">Teachers</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <i class="fas fa-book"></i>
+            <div class="stat-content">
+                <span class="stat-value">{{ get_courses()|length }}</span>
+                <span class="stat-label">Courses</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <i class="fas fa-door-open"></i>
+            <div class="stat-content">
+                <span class="stat-value">{{ get_classrooms()|length }}</span>
+                <span class="stat-label">Classrooms</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <i class="fas fa-users"></i>
+            <div class="stat-content">
+                <span class="stat-value">{{ get_classes()|length }}</span>
+                <span class="stat-label">Classes</span>
+            </div>
+        </div>
+    </div>
+
+    {% if get_teachers()|length > 0 and get_courses()|length > 0 %}
+    <div class="analytics-section">
+        <h2><i class="fas fa-chart-pie"></i> Analytics Dashboard</h2>
+        <div class="chart-grid">
+            <div class="chart-container">
+                <div class="chart-box">
+                    <canvas id="teacherClassChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-box">
+                    <canvas id="roomUsageChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-box">
+                    <canvas id="courseDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
 
         <h2 class="card-title">Add Classroom</h2>
@@ -109,10 +169,20 @@
                 </div>
         </form>
 
-    <div class="input-row" style="margin-top:24px; flex-wrap:wrap; gap:12px;">
-        <a class="btn gradient-btn" href="{{ url_for('generate_timetable_route') }}">Generate Timetable</a>
-        <a class="btn gradient-btn" href="{{ url_for('find_rooms_route') }}">Find Available Rooms</a>
-        <a class="btn gradient-btn" href="{{ url_for('reschedule_route') }}">Reschedule Class</a>
-    </div>
+    <h2 class="card-title">Timetable Settings</h2>
+    <form method="post" action="{{ url_for('generate_timetable_route') }}">
+        <div class="input-row" style="margin-bottom:12px;">
+            <input type="text" name="college_name" placeholder="College/University Name" value="University College" />
+            <select name="theme" id="theme-select">
+                <option value="light">Light Theme</option>
+                <option value="dark">Dark Theme</option>
+            </select>
+        </div>
+        <div class="input-row" style="flex-wrap:wrap; gap:12px;">
+            <button type="submit" class="btn gradient-btn">Generate Timetable</button>
+            <a class="btn gradient-btn" href="{{ url_for('find_rooms_route') }}">Find Available Rooms</a>
+            <a class="btn gradient-btn" href="{{ url_for('reschedule_route') }}">Reschedule Class</a>
+        </div>
+    </form>
  
 {% endblock %}

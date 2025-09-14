@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="main-title">Room Change History</h1>
+    <div class="card">
+        {% if room_changes %}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Class</th>
+                        <th>Course</th>
+                        <th>Old Room</th>
+                        <th>New Room</th>
+                        <th>Date</th>
+                        <th>Changed By</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for change in room_changes %}
+                    <tr>
+                        <td>{{ change.class_.name }}</td>
+                        <td>{{ change.course.name }}</td>
+                        <td>{{ change.old_room.name }}</td>
+                        <td>{{ change.new_room.name }}</td>
+                        <td>{{ change.date.strftime('%d %b %Y') }}</td>
+                        <td>{{ change.user.username if change.user else 'System' }}</td>
+                        <td>{{ change.reason }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-exchange-alt empty-icon"></i>
+            <p>No room changes have been recorded yet.</p>
+        </div>
+        {% endif %}
+        
+        <div class="action-footer">
+            <a href="{{ url_for('change_room') }}" class="btn gradient-btn">Make a Room Change</a>
+            <a href="{{ url_for('index') }}" class="btn secondary-btn">Back to Home</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -13,9 +13,16 @@ A web-based platform for automated class scheduling in higher education institut
 - Find available rooms for extra classes
 - Suggest rescheduling options for classes
 - Dedicated Teachers Directory page with all teacher details
+- Individual teacher timetable views showing personal schedules
+- Interactive dashboard with analytics charts showing:
+  - Teacher class distribution
+  - Room usage statistics
+  - Course distribution analysis
+- Timetable approval system with admin controls
 - Sidebar button for quick access to the Teachers Directory
 - Data stored in a local SQLite database
 - **Modern GitHub-style dark UI** (deep black, purple accent, crisp layout)
+- Light/Dark theme toggle support
 
 ## Tech Stack
 - Python 3
@@ -23,6 +30,9 @@ A web-based platform for automated class scheduling in higher education institut
 - SQLAlchemy (ORM)
 - Jinja2 (templating)
 - HTML/CSS (GitHub-inspired dark theme)
+- Chart.js (for analytics dashboard)
+- JavaScript (for interactive features)
+- Font Awesome (for icons)
 
 ## Getting Started
 
@@ -89,18 +99,28 @@ ECE-B
 3. Click "Generate Timetable" to create the schedule.
 4. View, print, or share the color-coded timetable.
 5. Use the sidebar to access features like "Find Available Rooms", "Reschedule Class", "Cancel Class", and "Change Room".
-6. Click the "View Teachers Directory" button in the sidebar to see a full list of teachers and their details on a dedicated page.
+6. Click the "View Teachers Directory" button in the sidebar to see a full list of teachers.
+7. Click on any teacher's name to view their personal timetable with their assigned classes.
+8. Review the dashboard analytics to get insights into teacher workloads, room usage, and course distribution.
+9. Use the timetable approval system to review and finalize schedules.
 
 ## Project Structure
 ```
 PROJECT/
+├── models.py              # Extended database models
 ├── scheduler.py           # Core scheduling logic and database models
 ├── webapp/
 │   ├── app.py             # Flask web application
 │   ├── templates/
-│   │   ├── teachers.html  # Teachers Directory page
-│   │   └── ...            # Other HTML templates (GitHub dark theme)
-│   └── static/            # CSS and static files (GitHub dark theme)
+│   │   ├── teachers.html         # Teachers Directory page
+│   │   ├── teacher_timetable.html # Individual teacher schedules
+│   │   ├── index.html           # Dashboard with analytics
+│   │   └── ...                  # Other HTML templates (GitHub dark theme)
+│   └── static/
+│       ├── style.css            # Main stylesheet
+│       ├── chart.js             # Dashboard chart functionality
+│       ├── dashboard.css        # Dashboard styling
+│       └── ...                  # Other static files (GitHub dark theme)
 ├── scheduler.db           # SQLite database (auto-created)
 └── README.md
 ```

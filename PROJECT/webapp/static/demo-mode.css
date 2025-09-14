@@ -1,0 +1,8 @@
+/* Demo mode styles */
+.demo-mode {
+    background-color: #238636;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+}

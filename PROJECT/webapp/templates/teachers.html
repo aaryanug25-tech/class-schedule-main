@@ -3,23 +3,37 @@
 {% block content %}
 <div class="content-section">
     <h1>Teachers Directory</h1>
-    <div class="teacher-grid">
-        {% for teacher in get_teachers() %}
-        <div class="teacher-card">
-            <div class="teacher-icon">
-                <i class="fas fa-chalkboard-teacher"></i>
-            </div>
-            <div class="teacher-info">
-                <h3 class="teacher-name">{{ teacher.name }}</h3>
-                <p class="teacher-subject">{{ teacher.subject }}</p>
-            </div>
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <i class="fas fa-users-slash"></i>
-            <p>No teachers registered.</p>
-        </div>
-        {% endfor %}
+    <div class="table-container">
+        <table class="teacher-table">
+            <thead>
+                <tr>
+                    <th>Teacher ID</th>
+                    <th>Name</th>
+                    <th>Subject</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for teacher in get_teachers() %}
+                <tr>
+                    <td>{{ teacher.id }}</td>
+                    <td>
+                        <div class="teacher-name-cell">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            <a href="{{ url_for('teacher_timetable', teacher_id=teacher.id) }}">{{ teacher.name }}</a>
+                        </div>
+                    </td>
+                    <td>{{ teacher.subject }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" class="empty-state">
+                        <i class="fas fa-users-slash"></i>
+                        <p>No teachers registered.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endblock %}

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from scheduler import Base
@@ -35,3 +35,18 @@ class RoomChange(Base):
     old_room = relationship('Classroom', foreign_keys=[old_room_id])
     new_room = relationship('Classroom', foreign_keys=[new_room_id])
     user = relationship('User')
+
+class ApprovedTimetable(Base):
+    __tablename__ = 'approved_timetables'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(String)
+    timetable_data = Column(String)  # Stores the timetable data as JSON string
+    approved_by = Column(Integer, ForeignKey('users.id'))
+    approved_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+    
+    approver = relationship('User')
+    
+    def __repr__(self):
+        return f"<ApprovedTimetable(name={self.name}, approved_by={self.approved_by}, active={self.is_active})>"

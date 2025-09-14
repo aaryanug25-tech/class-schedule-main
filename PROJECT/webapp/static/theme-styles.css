@@ -1,0 +1,69 @@
+/* Dark Theme Variables */
+.dark-theme {
+    --text: #c9d1d9;
+    --subtle: #161b22;
+    --background: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --hover: #21262d;
+    --sidebar: #010409;
+    --sidebar-hover: #0d1117;
+    --sidebar-text: #c9d1d9;
+    --accent: #238636;
+    --accent-dark: #196c2e;
+    --accent-hover: #2ea043;
+    --shadow: 0 1px 3px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.2);
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    margin-right: 10px;
+    color: var(--sidebar-text);
+    background: rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.theme-toggle .theme-icon {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.theme-toggle .light {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.theme-toggle .dark {
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.theme-toggle.active .light {
+    opacity: 0;
+    transform: translateY(-30px);
+}
+
+.theme-toggle.active .dark {
+    opacity: 1;
+    transform: translateY(0);
+}

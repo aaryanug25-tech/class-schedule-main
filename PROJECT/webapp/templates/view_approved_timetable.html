@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container timetable-container">
+    <div class="timetable-header professional">
+        <div class="header-content">
+            <div class="institution-logo">
+                <div class="logo-placeholder"></div>
+            </div>
+            <div class="header-text">
+                <h2>{{ timetable.name }}</h2>
+                <p class="header-subtitle">{{ timetable.description }}</p>
+                <p class="header-academic-year">Approved on: {{ timetable.approved_at.strftime('%d %b %Y') }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="approval-status approved">
+        <i class="fas fa-check-circle"></i> This timetable was approved by {{ timetable.approver.username }}
+        {% if timetable.is_active %}
+        <span class="badge active">Currently Active</span>
+        {% else %}
+        <span class="badge inactive">Inactive</span>
+        <!-- Admin controls always available for demo -->
+        <form action="{{ url_for('activate_timetable', id=timetable.id) }}" method="post" style="display:inline;">
+            <button type="submit" class="btn secondary-btn">Make Active</button>
+        </form>
+        {% endif %}
+    </div>
+
+    {% for class_name, grid in timetable_data.items() %}
+    <h3 class="class-heading">{{ class_name }}</h3>
+    <div class="card timetable-card" style="overflow-x:auto; margin-bottom:32px;">
+        <table class="timetable-table timetable-colored">
+            <thead>
+                <tr>
+                    <th class="day-column">Day</th>
+                    {% for slot in time_slots %}
+                    <th class="time-column">{{ slot[0]|replace(':00', '') }}-{{ slot[1]|replace(':00', '') }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for day in days %}
+                <tr>
+                    <td><b>{{ day }}</b></td>
+                    {% for slot in time_slots %}
+                    {% set slot_key = slot[0] + "-" + slot[1] %}
+                    {% if grid[slot_key] and grid[slot_key][day] %}
+                        {% set cell = grid[slot_key][day] %}
+                        <td class="multi-course-cell {{ cell|course_color_class if cell }}">
+                        {% if cell is string %}
+                            {% set parts = cell.split('<br>') %}
+                            <div class="compact-cell">
+                                <span class="course-name">{{ parts[0] }}</span>
+                                <span class="teacher-name">{{ parts[1] }}</span>
+                                <span class="room-name"><i class="room-icon"></i>{{ parts[2] }}</span>
+                            </div>
+                        {% elif cell is iterable %}
+                            {% for item in cell %}
+                                <div class="compact-cell">
+                                    <span class="course-name">{{ item.course }}</span>
+                                    <span class="teacher-name">{{ item.teacher }}</span>
+                                    <span class="room-name"><i class="room-icon"></i>{{ item.classroom }}</span>
+                                </div>
+                                {% if not loop.last %}<hr class="course-divider">{% endif %}
+                            {% endfor %}
+                        {% endif %}
+                        </td>
+                    {% else %}
+                        <td><span style="color:#ccc;">-</span></td>
+                    {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+    
+    <div class="action-buttons">
+        <a href="{{ url_for('approved_timetables') }}" class="btn gradient-btn">Back to Approved Timetables</a>
+        <a href="/" class="btn secondary-btn">Home</a>
+        <!-- Admin controls always available for demo -->
+        <a href="{{ url_for('generate_timetable_route') }}" class="btn gradient-btn">Generate New Timetable</a>
+    </div>
+</div>
+{% endblock content %}

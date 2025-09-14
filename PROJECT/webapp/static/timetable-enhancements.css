@@ -1,0 +1,21 @@
+.room-name {
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 3px;
+}
+
+.change-room-link {
+    margin-left: 4px;
+    color: var(--muted);
+    font-size: 0.7rem;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+}
+
+.change-room-link:hover {
+    opacity: 1;
+    color: var(--accent);
+}

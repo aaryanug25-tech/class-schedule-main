@@ -1,0 +1,35 @@
+/* Course color classes */
+.course-color-0 { background-color: rgba(26, 127, 55, 0.2); border-left: 3px solid #1a7f37; }
+.course-color-1 { background-color: rgba(93, 54, 177, 0.2); border-left: 3px solid #5d36b1; }
+.course-color-2 { background-color: rgba(99, 60, 1, 0.2); border-left: 3px solid #633c01; }
+.course-color-3 { background-color: rgba(158, 106, 3, 0.2); border-left: 3px solid #9e6a03; }
+.course-color-4 { background-color: rgba(9, 105, 218, 0.2); border-left: 3px solid #0969da; }
+.course-color-5 { background-color: rgba(134, 29, 118, 0.2); border-left: 3px solid #861d76; }
+.course-color-6 { background-color: rgba(5, 80, 174, 0.2); border-left: 3px solid #0550ae; }
+.course-color-7 { background-color: rgba(17, 99, 41, 0.2); border-left: 3px solid #116329; }
+.course-color-8 { background-color: rgba(149, 56, 0, 0.2); border-left: 3px solid #953800; }
+.course-color-9 { background-color: rgba(49, 146, 170, 0.2); border-left: 3px solid #3192aa; }
+
+/* Course name specific styles */
+.course-color-0 .course-name { color: #2ea043; }
+.course-color-1 .course-name { color: #a371f7; }
+.course-color-2 .course-name { color: #d29922; }
+.course-color-3 .course-name { color: #e3b341; }
+.course-color-4 .course-name { color: #58a6ff; }
+.course-color-5 .course-name { color: #db61a2; }
+.course-color-6 .course-name { color: #79c0ff; }
+.course-color-7 .course-name { color: #56d364; }
+.course-color-8 .course-name { color: #f0883e; }
+.course-color-9 .course-name { color: #56d4dd; }
+
+/* Gradient hover effects */
+.course-color-0:hover { background: linear-gradient(145deg, rgba(26, 127, 55, 0.25), rgba(26, 127, 55, 0.15)); }
+.course-color-1:hover { background: linear-gradient(145deg, rgba(93, 54, 177, 0.25), rgba(93, 54, 177, 0.15)); }
+.course-color-2:hover { background: linear-gradient(145deg, rgba(99, 60, 1, 0.25), rgba(99, 60, 1, 0.15)); }
+.course-color-3:hover { background: linear-gradient(145deg, rgba(158, 106, 3, 0.25), rgba(158, 106, 3, 0.15)); }
+.course-color-4:hover { background: linear-gradient(145deg, rgba(9, 105, 218, 0.25), rgba(9, 105, 218, 0.15)); }
+.course-color-5:hover { background: linear-gradient(145deg, rgba(134, 29, 118, 0.25), rgba(134, 29, 118, 0.15)); }
+.course-color-6:hover { background: linear-gradient(145deg, rgba(5, 80, 174, 0.25), rgba(5, 80, 174, 0.15)); }
+.course-color-7:hover { background: linear-gradient(145deg, rgba(17, 99, 41, 0.25), rgba(17, 99, 41, 0.15)); }
+.course-color-8:hover { background: linear-gradient(145deg, rgba(149, 56, 0, 0.25), rgba(149, 56, 0, 0.15)); }
+.course-color-9:hover { background: linear-gradient(145deg, rgba(49, 146, 170, 0.25), rgba(49, 146, 170, 0.15)); }

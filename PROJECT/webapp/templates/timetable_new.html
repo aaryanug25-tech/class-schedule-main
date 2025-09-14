@@ -1,0 +1,100 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container timetable-container">
+    <div class="timetable-header professional">
+        <div class="header-content">
+            <div class="institution-logo">
+                <!-- Placeholder for logo -->
+                <div class="logo-placeholder"></div>
+            </div>
+            <div class="header-text">
+                <h2>FIRST SEMESTER TIMETABLE</h2>
+                <p class="header-subtitle">Department of Computer Science</p>
+                <p class="header-academic-year">Academic Year: 2025 - 26</p>
+            </div>
+        </div>
+    </div>
+    
+    {% for class_name, grid in timetable_data.items() %}
+    <h3 class="class-heading">{{ class_name }}</h3>
+    <div class="card timetable-card" style="overflow-x:auto; margin-bottom:32px;">
+        <table class="timetable-table timetable-colored">
+            <thead>
+                <tr>
+                    <th class="day-column">Day</th>
+                    {% for slot in time_slots %}
+                    <th class="time-column">{{ slot[0]|replace(':00', '') }}-{{ slot[1]|replace(':00', '') }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for day in days %}
+                <tr>
+                    <td><b>{{ day }}</b></td>
+                    {% for slot in time_slots %}
+                    {% set cell = grid[slot][day] %}
+                    <td class="multi-course-cell {{ cell|course_color_class if cell }}" title="{% if cell %}{% if cell is string %}{{ cell|striptags }}{% else %}{% for course in cell %}{{ course|striptags }}{% if not loop.last %} | {% endif %}{% endfor %}{% endif %}{% endif %}">
+                        {% if cell %}
+                            {% if cell is string %}
+                                {% set parts = cell.split('<br>') %}
+                                {% if parts|length >= 3 %}
+                                <div class="compact-cell">
+                                    <span class="course-name">{{ parts[0] }}</span>
+                                    <span class="teacher-name">{{ parts[1] }}</span>
+                                    <span class="room-name">{{ parts[2] }}</span>
+                                </div>
+                                {% else %}
+                                {{ cell|replace('<br>', ' - ')|safe }}
+                                {% endif %}
+                            {% else %}
+                                {% for course in cell %}
+                                    <div class="course-entry {{ loop.index0|course_color_class }}">
+                                        {% set parts = course.split('<br>') %}
+                                        {% if parts|length >= 3 %}
+                                        <span class="course-name">{{ parts[0] }}</span>
+                                        <span class="teacher-name">{{ parts[1][:10] }}</span>
+                                        {% else %}
+                                        {{ course|replace('<br>', ' - ')|safe }}
+                                        {% endif %}
+                                    </div>
+                                    {% if not loop.last %}<hr class="course-divider">{% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        {% else %}
+                            <span style="color:#ccc;">-</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="legend">
+            <h4>Legend</h4>
+            <table class="legend-table">
+                <tr><th>Course</th><th>Room</th><th>Instructor</th></tr>
+                {% for slot in time_slots %}
+                    {% for day in days %}
+                        {% set cell = grid[slot][day] %}
+                        {% if cell %}
+                            {% if cell is string %}
+                                {% set parts = cell.split('<br>') %}
+                                {% if parts|length >= 3 %}
+                                <tr>
+                                    <td><span class="legend-color {{ cell|course_color_class }}"></span> {{ parts[0] }}</td>
+                                    <td>{{ parts[2] }}</td>
+                                    <td>{{ parts[1] }}</td>
+                                </tr>
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+    <a href="/" class="btn gradient-btn" style="margin-top:24px;display:inline-block;">Back to Home</a>
+</div>
+{% endblock content %}

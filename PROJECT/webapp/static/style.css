@@ -1,3 +1,51 @@
+/* Style textarea to match dark theme */
+.container textarea {
+    flex: 1 1 180px;
+    min-width: 120px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border 0.2s, box-shadow 0.2s;
+    resize: vertical;
+}
+
+.container textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(163,113,247,0.18);
+}
+/* Style select dropdowns to match dark theme */
+.container select {
+    flex: 1 1 180px;
+    min-width: 120px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border 0.2s, box-shadow 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.container select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(163,113,247,0.18);
+}
+
+/* Style the dropdown arrow for select (WebKit browsers) */
+.container select::-ms-expand {
+    display: none;
+}
+.container select::-webkit-input-placeholder {
+    color: var(--muted);
+}
 /* Sidebar teacher section */
 .sidebar-section {
     margin: 24px 0 0 0;
@@ -37,62 +85,63 @@
 }
 
 /* Teachers Page Styles */
-.teacher-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 20px;
-    padding: 20px 0;
+.table-container {
+    margin-top: 20px;
+    overflow-x: auto;
 }
 
-.teacher-card {
-    background-color: #21262d;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    padding: 20px;
+.teacher-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px var(--border);
+}
+
+.teacher-table th {
+    background: var(--bg);
+    color: var(--text);
+    font-weight: 600;
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border);
+}
+
+.teacher-table td {
+    padding: 12px 16px;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+}
+
+.teacher-table tbody tr:hover {
+    background: var(--hover);
+}
+
+.teacher-name-cell {
     display: flex;
     align-items: center;
-    transition: transform 0.2s ease;
+    gap: 10px;
 }
 
-.teacher-card:hover {
-    transform: translateY(-2px);
-    border-color: #a371f7;
-}
-
-.teacher-icon {
-    font-size: 2em;
-    color: #a371f7;
-    margin-right: 15px;
-}
-
-.teacher-info {
-    flex: 1;
-}
-
-.teacher-name {
-    margin: 0;
-    color: #c9d1d9;
-    font-size: 1.1em;
-    font-weight: 600;
-}
-
-.teacher-subject {
-    margin: 5px 0 0;
-    color: #8b949e;
-    font-size: 0.9em;
+.teacher-name-cell i {
+    color: var(--accent);
 }
 
 .empty-state {
-    grid-column: 1 / -1;
     text-align: center;
     padding: 40px;
-    color: #8b949e;
+    color: var(--muted);
 }
 
 .empty-state i {
-    font-size: 3em;
-    margin-bottom: 15px;
-    color: #30363d;
+    font-size: 2em;
+    margin-bottom: 10px;
+    color: var(--border);
+}
+
+.empty-state p {
+    margin: 0;
 }
 /* Logo icon for topbar */
 .logo-icon {
@@ -194,11 +243,24 @@ body {
     --bg: #0d1117;          /* Page background */
     --panel: #161b22;       /* Surfaces/cards/sidebar */
     --text: #c9d1d9;        /* Primary text */
+    --text-bright: #e6edf3; /* Bright text for emphasis */
     --muted: #8b949e;       /* Secondary text */
     --border: #30363d;      /* Dividers and outlines */
     --hover: #21262d;       /* Hover backgrounds */
     --accent: #a371f7;      /* Accent (purple) */
     --accent-2: #6e40c9;    /* Accent hover */
+    
+    /* Course colors */
+    --course-color-1: #1a7f37;
+    --course-color-2: #5d36b1;
+    --course-color-3: #633c01;
+    --course-color-4: #9e6a03;
+    --course-color-5: #0969da;
+    --course-color-6: #861d76;
+    --course-color-7: #0550ae;
+    --course-color-8: #116329;
+    --course-color-9: #953800;
+    --course-color-10: #3192aa;
 }
 
 /* Global */
@@ -237,25 +299,66 @@ body {
 .sidebar-menu .icon { width: 20px; text-align: center; color: var(--accent); }
 
 /* Main container */
+/* Main container */
 .container {
-    max-width: 900px; margin: 48px auto 32px 300px; background: var(--panel);
-    border-radius: 16px; box-shadow: 0 0 0 1px var(--border), 0 8px 24px rgba(1,4,9,0.35);
-    padding: 32px; position: relative;
+    max-width: calc(100% - 260px); 
+    margin: 48px 10px 32px 240px; 
+    background: var(--panel);
+    border-radius: 16px; 
+    box-shadow: 0 0 0 1px var(--border), 0 8px 24px rgba(1,4,9,0.35);
+    padding: 15px; 
+    position: relative;
 }
 .main-title { color: #fff; font-size: 2.1rem; margin: 0 0 20px; font-weight: 800; text-align: center; }
 .card-title { color: var(--accent); margin: 20px 0 10px; font-weight: 700; font-size: 1.1rem; }
+.class-heading { color: var(--accent); margin: 25px 0 10px; font-weight: 700; font-size: 1.2rem; }
 
 /* Forms */
 .input-row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+
 .container input[type="text"],
 .container input[type="number"],
-.container input[type="file"] {
-    flex: 1 1 180px; min-width: 180px; padding: 10px 12px; border: 1px solid var(--border);
-    background: var(--bg); color: var(--text); border-radius: 6px; font-size: 1rem;
+.container input[type="file"],
+.container input[type="time"],
+.container input[type="date"] {
+    flex: 1 1 180px;
+    min-width: 120px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border 0.2s, box-shadow 0.2s;
 }
+
 .container input[type="text"]:focus,
 .container input[type="number"]:focus,
-.container input[type="file"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(163,113,247,0.25); }
+.container input[type="file"]:focus,
+.container input[type="time"]:focus,
+.container input[type="date"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(163,113,247,0.18);
+}
+
+/* Remove default background and border for time/date pickers in WebKit browsers */
+.container input[type="time"],
+.container input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+/* Style the clock/calendar icons for time/date pickers */
+.container input[type="time"]::-webkit-calendar-picker-indicator,
+.container input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.7) sepia(1) saturate(5) hue-rotate(250deg);
+    opacity: 0.8;
+    cursor: pointer;
+}
 
 .btn.gradient-btn {
     padding: 10px 14px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-weight: 700; color: #fff;
@@ -269,22 +372,558 @@ body {
 .csv-format code { display: block; padding: 10px; background: var(--panel); border-radius: 6px; color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; border-left: 3px solid var(--accent); }
 
 /* Timetable and legend */
-.timetable-header { text-align: center; background: var(--panel); border-radius: 12px; margin: 20px 0; padding: 14px 0 8px; box-shadow: 0 0 0 1px var(--border); }
-.timetable-header h2 { color: #fff; margin: 0; font-weight: 700; font-size: 1.2rem; }
+.timetable-header { 
+    text-align: center; 
+    background: var(--panel); 
+    border-radius: 12px; 
+    margin: 20px 0; 
+    padding: 14px 0 8px; 
+    box-shadow: 0 0 0 1px var(--border), 0 4px 12px rgba(0,0,0,0.15);
+    position: relative;
+    z-index: 2;
+    background: var(--panel);
+}
 
-.timetable-table { width: 100%; border-collapse: collapse; margin-top: 12px; background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 1px var(--border); }
-.timetable-table th, .timetable-table td { border: 1px solid var(--border); padding: 8px 10px; text-align: center; font-size: .98rem; color: var(--text); }
-.timetable-table th { background: var(--bg); font-weight: 700; }
-.timetable-table td:not(:empty):hover { background: var(--hover); }
+.timetable-header h2 { 
+    color: #fff; 
+    margin: 0; 
+    font-weight: 700; 
+    font-size: 1.2rem; 
+}
 
-.legend { margin-top: 12px; }
-.legend-table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px var(--border); font-size: .95rem; }
-.legend-table th, .legend-table td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; color: var(--text); }
-.legend-color { display: inline-block; width: 16px; height: 16px; border-radius: 4px; margin-right: 8px; vertical-align: middle; border: 1px solid var(--border); }
+/* Class name header */
+.card-title {
+    position: sticky;
+    top: 60px;
+    z-index: 2;
+    background: var(--panel);
+    margin: 0 0 10px 0;
+    padding: 10px;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 1px 0 var(--border);
+}
+
+/* Improve cell content readability */
+.timetable-table td > div {
+    line-height: 1.2;
+    margin: 2px 0;
+}
+
+/* Make course name bold */
+.timetable-table td > div:first-child {
+    font-weight: 600;
+}
+
+/* Add hover effect for better interaction */
+.timetable-card {
+    transition: all 0.3s ease;
+    margin-bottom: 32px;
+    background: var(--panel);
+    border-radius: 12px;
+    box-shadow: 0 0 0 1px var(--border);
+}
+
+.timetable-card:hover {
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(1,4,9,0.35);
+}
+
+.timetable-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    margin-top: 12px; 
+    background: var(--panel); 
+    border-radius: 12px; 
+    overflow: hidden; 
+    box-shadow: 0 0 0 1px var(--border);
+    table-layout: fixed;
+}
+
+.timetable-table {
+    width: 100%;
+    margin: 0;
+    font-size: 0.85rem;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.timetable-table th, .timetable-table td { 
+    border: 1px solid var(--border); 
+    padding: 8px 6px; 
+    text-align: center; 
+    font-size: 0.85rem; 
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal; /* Allow content to wrap */
+    vertical-align: top;
+    height: 80px;
+}
+
+.timetable-table .day-column {
+    width: 70px;
+}
+
+.timetable-table .time-column {
+    width: auto;
+    font-size: 0.8rem;
+}
+
+.timetable-table th:first-child, 
+.timetable-table td:first-child {
+    width: 100px; /* Fixed width for the day column */
+    font-weight: 600;
+}
+.timetable-table th { 
+    background: var(--bg); 
+    font-weight: 700;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.timetable-table td:not(:empty):hover { 
+    background: var(--hover); 
+}
+
+/* Timetable Container Styles */
+.card.timetable-card {
+    margin-bottom: 20px;
+    overflow-x: auto;
+    padding: 15px;
+    background: var(--bg);
+}
+
+.timetable-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+    color: var(--accent);
+}
+
+.timetable-header { 
+    text-align: center; 
+    background: var(--panel); 
+    border-radius: 8px; 
+    margin: 10px 0 25px; 
+    padding: 14px 0; 
+    box-shadow: 0 0 0 1px var(--border);
+    position: relative;
+    overflow: hidden;
+    border-bottom: 3px solid;
+    border-image: linear-gradient(to right, var(--accent), var(--accent-2)) 1;
+}
+
+.timetable-header.professional {
+    padding: 20px 0;
+}
+
+.timetable-header .header-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+.timetable-header .institution-logo {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timetable-header .logo-placeholder {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+}
+
+.timetable-header .header-text {
+    text-align: center;
+}
+
+.timetable-header h2 { 
+    color: #fff; 
+    margin: 0 0 8px 0; 
+    font-weight: 800; 
+    font-size: 1.3rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.timetable-header .header-subtitle {
+    color: var(--text);
+    margin: 0 0 4px 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.timetable-header .header-academic-year {
+    color: var(--accent);
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Compact legend styles */
+.legend {
+    margin-top: 10px;
+    font-size: 0.9rem;
+}
+
+.legend-table {
+    font-size: 0.85rem;
+    margin-top: 8px;
+}
+
+.legend-table td, .legend-table th {
+    padding: 4px 8px;
+}
+
+/* Time slot header styles */
+.timetable-table th:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--bg);
+    z-index: 2;
+}
+
+/* Class Title Styles */
+.card-title {
+    margin-bottom: 15px !important;
+    padding: 5px 10px;
+    background: var(--panel);
+    border-radius: 6px;
+    display: block;
+    clear: both;
+    width: auto;
+    z-index: 10;
+    position: relative;
+    text-align: center;
+}
+
+.card.timetable-card {
+    overflow: visible;
+    padding: 10px;
+}
+
+/* Make the timetable more responsive */
+@media (max-width: 1200px) {
+    .container {
+        max-width: calc(100% - 230px);
+        margin-left: 220px;
+        padding: 10px;
+    }
+    
+    .timetable-table {
+        font-size: 0.8rem;
+    }
+    
+    .timetable-table th, .timetable-table td {
+        padding: 3px 2px;
+    }
+}
+
+/* Further compress on small screens */
+@media (max-width: 992px) {
+    .container {
+        margin: 48px 5px 32px 220px;
+        max-width: calc(100% - 230px);
+    }
+}
+
+/* Specific timetable container styles */
+.timetable-container {
+    padding: 10px;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+.timetable-card {
+    width: 100%;
+}
+
+/* Make sure time columns are even width */
+.timetable-table .time-column {
+    width: calc((100% - 70px) / 10); /* 70px for day column, then divide rest evenly */
+}
+
+.multi-course-cell {
+    padding: 0 !important;
+    vertical-align: top;
+}
+
+.course-entry {
+    padding: 3px;
+    transition: background-color 0.2s;
+    font-size: 0.8rem;
+    line-height: 1.2;
+}
+
+.course-entry:hover {
+    background-color: var(--hover);
+}
+
+.compact-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    line-height: 1.3;
+    padding: 8px 6px;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+    height: 100%;
+    min-height: 64px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+.compact-cell:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.compact-cell .course-name {
+    font-weight: bold;
+    font-size: 0.95em;
+}
+
+.compact-cell .teacher-name {
+    font-size: 0.85em;
+    opacity: 0.85;
+}
+
+.compact-cell .room-name {
+    font-size: 0.85em;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.75;
+}
+
+.room-icon:before {
+    content: "📍";
+    font-size: 0.9em;
+}
+
+.course-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 3px;
+    display: block;
+    color: var(--text-bright);
+}
+
+.teacher-name {
+    font-size: 0.75rem;
+    display: block;
+    margin-bottom: 2px;
+    color: var(--text);
+}
+
+.room-name {
+    font-size: 0.7rem;
+    display: inline-block;
+    padding: 2px 4px;
+    border-radius: 3px;
+    background-color: rgba(0,0,0,0.15);
+    color: var(--text);
+}
+
+.course-divider {
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+}
+
+/* Course Coordinator Styles */
+.coordinator-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 20px;
+}
+
+.coordinator-form {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.form-section h2 {
+    color: var(--accent);
+    font-size: 1.2rem;
+    margin-bottom: 16px;
+}
+
+.course-assignment-row {
+    margin-bottom: 12px;
+    animation: fadeIn 0.3s ease;
+}
+
+.button-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.remove-course {
+    padding: 8px 12px;
+    background: #40363d;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: #ff6b6b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.remove-course:hover {
+    background: #4a3f45;
+    color: #ff8787;
+}
+
+.current-assignments {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    max-height: 800px;
+    overflow-y: auto;
+}
+
+.class-assignment-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.class-assignment-card h3 {
+    color: var(--text);
+    font-size: 1.1rem;
+    margin: 0 0 12px 0;
+}
+
+.assignment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.assignment-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px;
+    background: var(--panel);
+    border-radius: 4px;
+}
+
+.course-name {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.teacher-name {
+    color: var(--text);
+}
+
+.no-assignments {
+    color: var(--muted);
+    text-align: center;
+    padding: 12px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.legend { 
+    margin-top: 20px; 
+    padding: 16px;
+    background: var(--panel);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.legend h4 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1.1rem;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+}
+
+.legend-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    background: var(--panel); 
+    border-radius: 8px; 
+    overflow: hidden; 
+    box-shadow: 0 0 0 1px var(--border); 
+    font-size: .95rem; 
+}
+
+.legend-table th, .legend-table td { 
+    border: 1px solid var(--border); 
+    padding: 8px 12px; 
+    text-align: left; 
+    color: var(--text); 
+}
+
+.legend-table th {
+    font-weight: 600;
+    background-color: var(--subtle);
+}
+
+.legend-color { 
+    display: inline-block; 
+    width: 16px; 
+    height: 16px; 
+    border-radius: 4px; 
+    margin-right: 8px; 
+    vertical-align: middle; 
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
 
 /* Utility */
+@media (max-width: 1400px) {
+    .container {
+        max-width: calc(100% - 360px);
+        min-width: 800px;
+    }
+    .timetable-table th, .timetable-table td {
+        padding: 6px 3px;
+        font-size: 0.85rem;
+    }
+}
+
 @media (max-width: 980px) {
-    .sidebar { position: static; width: auto; height: auto; margin: 16px; border-radius: 12px; }
-    .container { margin: 16px; }
+    .sidebar { 
+        position: static; 
+        width: auto; 
+        height: auto; 
+        margin: 16px; 
+        border-radius: 12px; 
+    }
+    .container { 
+        margin: 16px;
+        max-width: 100%;
+        min-width: auto;
+    }
+    .timetable-card {
+        overflow-x: auto;
+        padding: 0;
+    }
+    .timetable-table {
+        min-width: 1000px; /* Ensure table remains readable on small screens */
+    }
 }
 

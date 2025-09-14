@@ -4,41 +4,102 @@
 <div class="container">
     <h1 class="main-title">Change Room</h1>
     <div class="card">
-        <form action="{{ url_for('change_room') }}" method="post">
+        <form action="{{ url_for('change_room') }}" method="post" id="roomChangeForm">
             <div class="input-row">
                 <label>Select Class:</label>
-                <select name="class_id" required>
+                <select name="class_id" required id="classSelect">
+                    <option value="">-- Select Class --</option>
                     {% for class in classes %}
-                    <option value="{{ class.id }}">{{ class.name }}</option>
+                    <option value="{{ class.id }}" {% if selected_class_id and selected_class_id == class.id %}selected{% endif %}>{{ class.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="input-row">
                 <label>Select Course:</label>
-                <select name="course_id" required>
+                <select name="course_id" required id="courseSelect">
+                    <option value="">-- Select Course --</option>
                     {% for course in courses %}
-                    <option value="{{ course.id }}">{{ course.name }}</option>
+                    <option value="{{ course.id }}" {% if selected_course_id and selected_course_id == course.id %}selected{% endif %}>{{ course.name }}</option>
                     {% endfor %}
+                </select>
+            </div>
+            <div class="input-row">
+                <label>Select Day:</label>
+                <select name="day" required id="daySelect">
+                    <option value="">-- Select Day --</option>
+                    <option value="Monday" {% if selected_day == 'Monday' %}selected{% endif %}>Monday</option>
+                    <option value="Tuesday" {% if selected_day == 'Tuesday' %}selected{% endif %}>Tuesday</option>
+                    <option value="Wednesday" {% if selected_day == 'Wednesday' %}selected{% endif %}>Wednesday</option>
+                    <option value="Thursday" {% if selected_day == 'Thursday' %}selected{% endif %}>Thursday</option>
+                    <option value="Friday" {% if selected_day == 'Friday' %}selected{% endif %}>Friday</option>
+                </select>
+            </div>
+            <div class="input-row">
+                <label>Select Time Slot:</label>
+                <select name="time_slot" required id="timeSlotSelect">
+                    <option value="">-- Select Time Slot --</option>
+                    <option value="08:00-09:00" {% if selected_time_slot == '08:00-09:00' %}selected{% endif %}>08:00 - 09:00</option>
+                    <option value="09:00-10:00" {% if selected_time_slot == '09:00-10:00' %}selected{% endif %}>09:00 - 10:00</option>
+                    <option value="10:00-11:00" {% if selected_time_slot == '10:00-11:00' %}selected{% endif %}>10:00 - 11:00</option>
+                    <option value="11:00-12:00" {% if selected_time_slot == '11:00-12:00' %}selected{% endif %}>11:00 - 12:00</option>
+                    <option value="12:00-13:00" {% if selected_time_slot == '12:00-13:00' %}selected{% endif %}>12:00 - 13:00</option>
+                    <option value="13:00-14:00" {% if selected_time_slot == '13:00-14:00' %}selected{% endif %}>13:00 - 14:00</option>
+                    <option value="14:00-15:00" {% if selected_time_slot == '14:00-15:00' %}selected{% endif %}>14:00 - 15:00</option>
+                    <option value="15:00-16:00" {% if selected_time_slot == '15:00-16:00' %}selected{% endif %}>15:00 - 16:00</option>
+                    <option value="16:00-17:00" {% if selected_time_slot == '16:00-17:00' %}selected{% endif %}>16:00 - 17:00</option>
+                    <option value="17:00-18:00" {% if selected_time_slot == '17:00-18:00' %}selected{% endif %}>17:00 - 18:00</option>
                 </select>
             </div>
             <div class="input-row">
                 <label>Select New Room:</label>
                 <select name="new_room_id" required>
+                    <option value="">-- Select New Room --</option>
                     {% for room in available_rooms %}
                     <option value="{{ room.id }}">{{ room.name }} (Capacity: {{ room.capacity }})</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="input-row">
-                <label>Date:</label>
-                <input type="date" name="date" required>
+                <label>Effective Date:</label>
+                <input type="date" name="date" required min="{{ today }}">
             </div>
             <div class="input-row">
                 <label>Reason for Change:</label>
-                <textarea name="reason" required></textarea>
+                <textarea name="reason" required rows="3" placeholder="Provide a reason for this room change..."></textarea>
             </div>
             <button class="btn gradient-btn" type="submit">Change Room</button>
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize date field with today's date as minimum
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelector('input[name="date"]').min = today;
+    
+    // You could add AJAX functionality here to populate time slots based on class and course selection
+    const classSelect = document.getElementById('classSelect');
+    const courseSelect = document.getElementById('courseSelect');
+    const daySelect = document.getElementById('daySelect');
+    const timeSlotSelect = document.getElementById('timeSlotSelect');
+    
+    // Example: Reload time slots when class and course are selected
+    function checkForTimetableEntries() {
+        const classId = classSelect.value;
+        const courseId = courseSelect.value;
+        const day = daySelect.value;
+        
+        if(classId && courseId && day) {
+            // You can implement AJAX call to backend to get available time slots for this class-course-day combo
+            // For now, we'll leave it as is with all time slots available
+            console.log("Could fetch specific time slots for", classId, courseId, day);
+        }
+    }
+    
+    classSelect.addEventListener('change', checkForTimetableEntries);
+    courseSelect.addEventListener('change', checkForTimetableEntries);
+    daySelect.addEventListener('change', checkForTimetableEntries);
+});
+</script>
 {% endblock %}

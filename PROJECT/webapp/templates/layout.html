@@ -5,8 +5,16 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Class Schedule Manager</title>
         <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='course-colors.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='theme-styles.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='approval-system.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='room_changes.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='timetable-enhancements.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='demo-mode.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-        
+        <script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>
+        {% block head_extra %}{% endblock %}
 </head>
 <body>
 
@@ -28,12 +36,12 @@
                                 </a>
                         </div>
             <div class="topbar-right">
-                {% if current_user %}
-                    <a href="{{ url_for('logout') }}" class="topbar-link">Logout</a>
-                {% else %}
-                    <a href="{{ url_for('login') }}" class="topbar-link">Login</a>
-                    <a href="{{ url_for('register') }}" class="topbar-link">Register</a>
-                {% endif %}
+                <button id="theme-toggle" class="theme-toggle" title="Toggle Theme">
+                    <span class="theme-icon light"><i class="fas fa-sun"></i></span>
+                    <span class="theme-icon dark"><i class="fas fa-moon"></i></span>
+                </button>
+                <!-- Login/Register removed for demo -->
+                <span class="topbar-link demo-mode">Demo Mode</span>
             </div>
         </nav>
 
@@ -81,19 +89,69 @@
                     Change Room
                 </a>
             </li>
-            {% if current_user and current_user.is_admin %}
             <li>
-                <a href="{{ url_for('admin_route') }}" {% if request.endpoint == 'admin_route' %}class="active"{% endif %}>
+                <a href="{{ url_for('room_changes') }}" {% if request.endpoint == 'room_changes' %}class="active"{% endif %}>
+                    <span class="icon"><i class="fas fa-exchange-alt"></i></span>
+                    Room Changes
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('approved_timetables') }}" {% if request.endpoint == 'approved_timetables' %}class="active"{% endif %}>
+                    <span class="icon"><i class="fas fa-check-circle"></i></span>
+                    Approved Timetables
+                </a>
+            </li>
+            <!-- Admin access always available for demo -->
+            <li>
+                <a href="{{ url_for('admin') }}" {% if request.endpoint == 'admin' %}class="active"{% endif %}>
                     <span class="icon"><i class="fas fa-cog"></i></span>
                     Admin Settings
                 </a>
             </li>
-            {% endif %}
         </ul>
         <div class="sidebar-section">
+            <a href="{{ url_for('course_coordinator') }}" class="sidebar-button">
+                <span class="icon"><i class="fas fa-tasks"></i></span>
+                Course Coordinator Panel
+            </a>
             <a href="{{ url_for('teachers') }}" class="sidebar-button">
                 <span class="icon"><i class="fas fa-chalkboard-teacher"></i></span>
                 View Teachers Directory
+            </a>
+        </div>
+        
+        <div class="sidebar-section">
+            <h3 class="sidebar-title">Approved Timetables</h3>
+            <div class="sidebar-approved-timetable" id="approved-timetable-sidebar">
+                {% set active_timetable = [] %}
+                {% for timetable in get_approved_timetables() if timetable.is_active %}
+                    {% if active_timetable.append(timetable) %}{% endif %}
+                {% endfor %}
+                
+                {% if active_timetable %}
+                    <div class="approved-timetable-info">
+                        <h4>{{ active_timetable[0].name }}</h4>
+                        <p>Approved by: {{ active_timetable[0].approver.username }}</p>
+                        <p>Date: {{ active_timetable[0].approved_at.strftime('%d %b %Y') }}</p>
+                        <a href="{{ url_for('view_approved_timetable', id=active_timetable[0].id) }}" class="sidebar-button">
+                            <span class="icon"><i class="fas fa-eye"></i></span>
+                            View Timetable
+                        </a>
+                    </div>
+                {% else %}
+                    <p class="empty-state">No approved timetable.</p>
+                    {% if current_user and current_user.is_admin() %}
+                    <a href="{{ url_for('generate_timetable_route') }}" class="sidebar-button">
+                        <span class="icon"><i class="fas fa-plus"></i></span>
+                        Generate & Approve
+                    </a>
+                    {% endif %}
+                {% endif %}
+            </div>
+            
+            <a href="{{ url_for('approved_timetables') }}" class="sidebar-button">
+                <span class="icon"><i class="fas fa-history"></i></span>
+                All Approved Timetables
             </a>
         </div>
     </div>

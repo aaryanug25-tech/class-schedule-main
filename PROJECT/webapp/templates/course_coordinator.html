@@ -1,0 +1,101 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="content-section">
+    <h1>Course Coordinator Panel</h1>
+    <div class="coordinator-controls">
+        <!-- Class Selection Form -->
+        <form method="POST" class="coordinator-form">
+            <div class="form-section">
+                <h2>Manage Class Courses</h2>
+                <div class="input-row">
+                    <select name="class_id" id="class_select" required>
+                        <option value="">Select Class</option>
+                        {% for class in classes %}
+                        <option value="{{ class.id }}">{{ class.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div id="course-assignments">
+                    <div class="course-assignment-row">
+                        <div class="input-row">
+                            <select name="course_ids[]" class="course-select" required>
+                                <option value="">Select Course</option>
+                                {% for course in courses %}
+                                <option value="{{ course.id }}">{{ course.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <select name="teacher_ids[]" class="teacher-select" required>
+                                <option value="">Select Teacher</option>
+                                {% for teacher in teachers %}
+                                <option value="{{ teacher.id }}">{{ teacher.name }} ({{ teacher.subject }})</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn remove-course" onclick="removeCourseRow(this)" style="display: none;">
+                                <i class="fas fa-minus-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-row">
+                    <button type="button" class="btn gradient-btn" onclick="addCourseRow()">
+                        <i class="fas fa-plus"></i> Add Another Course
+                    </button>
+                    <button type="submit" class="btn gradient-btn">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Current Assignments Display -->
+        <div class="current-assignments">
+            <h2>Current Class Assignments</h2>
+            {% for class in classes %}
+            <div class="class-assignment-card">
+                <h3>{{ class.name }}</h3>
+                <div class="assignment-list">
+                    {% for ct in class.course_teachers %}
+                    <div class="assignment-item">
+                        <span class="course-name">{{ ct.course.name }}</span>
+                        <span class="teacher-name">{{ ct.teacher.name }}</span>
+                    </div>
+                    {% else %}
+                    <p class="no-assignments">No courses assigned yet</p>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+function addCourseRow() {
+    const container = document.getElementById('course-assignments');
+    const newRow = container.children[0].cloneNode(true);
+    
+    // Reset selections
+    newRow.querySelectorAll('select').forEach(select => select.value = '');
+    
+    // Show remove buttons for all but first row
+    document.querySelectorAll('.remove-course').forEach(btn => btn.style.display = 'block');
+    
+    container.appendChild(newRow);
+}
+
+function removeCourseRow(button) {
+    const container = document.getElementById('course-assignments');
+    if (container.children.length > 1) {
+        button.closest('.course-assignment-row').remove();
+    }
+    
+    // Hide remove button if only one row remains
+    if (container.children.length === 1) {
+        container.querySelector('.remove-course').style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

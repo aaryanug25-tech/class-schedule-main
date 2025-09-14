@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="content-section">
+    <h1>Add Courses to Class</h1>
+    <form method="POST" class="form-group">
+        <div class="input-row">
+            <select name="class_id" required>
+                <option value="">Select Class</option>
+                {% for class in classes %}
+                <option value="{{ class.id }}">{{ class.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div id="course-teacher-pairs">
+            <div class="course-teacher-pair">
+                <div class="input-row">
+                    <select name="course_ids[]" required>
+                        <option value="">Select Course</option>
+                        {% for course in courses %}
+                        <option value="{{ course.id }}">{{ course.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="teacher_ids[]" required>
+                        <option value="">Select Teacher</option>
+                        {% for teacher in teachers %}
+                        <option value="{{ teacher.id }}">{{ teacher.name }} ({{ teacher.subject }})</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="btn gradient-btn remove-pair" onclick="removePair(this)" style="display: none;">Remove</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-row">
+            <button type="button" class="btn gradient-btn" onclick="addPair()">Add Another Course</button>
+            <button type="submit" class="btn gradient-btn">Save Changes</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function addPair() {
+    const container = document.getElementById('course-teacher-pairs');
+    const newPair = container.children[0].cloneNode(true);
+    
+    // Reset the selected values
+    newPair.querySelectorAll('select').forEach(select => select.value = '');
+    
+    // Show the remove button for all pairs except the first one
+    const removeButtons = document.querySelectorAll('.remove-pair');
+    removeButtons.forEach(btn => btn.style.display = 'block');
+    
+    container.appendChild(newPair);
+}
+
+function removePair(button) {
+    const pairCount = document.getElementsByClassName('course-teacher-pair').length;
+    if (pairCount > 1) {
+        button.closest('.course-teacher-pair').remove();
+    }
+    
+    // Hide the remove button if only one pair remains
+    if (pairCount <= 2) {
+        document.querySelector('.remove-pair').style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

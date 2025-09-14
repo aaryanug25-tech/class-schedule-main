@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Approved Timetables</h2>
+    
+    {% if timetables %}
+    <div class="timetable-list">
+        {% for timetable in timetables %}
+        <div class="timetable-item card">
+            <div class="timetable-header">
+                <h3>{{ timetable.name }}</h3>
+                {% if timetable.is_active %}
+                <span class="badge active">Currently Active</span>
+                {% endif %}
+            </div>
+            <div class="timetable-details">
+                <p>{{ timetable.description }}</p>
+                <p class="timetable-meta">
+                    Approved by {{ timetable.approver.username }} on {{ timetable.approved_at.strftime('%d %b %Y, %H:%M') }}
+                </p>
+            </div>
+            <div class="timetable-actions">
+                <a href="{{ url_for('view_approved_timetable', id=timetable.id) }}" class="btn gradient-btn">View Timetable</a>
+                {% if not timetable.is_active %}
+                <form action="{{ url_for('activate_timetable', id=timetable.id) }}" method="post" style="display:inline;">
+                    <button type="submit" class="btn secondary-btn">Make Active</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No approved timetables yet.</p>
+        <a href="{{ url_for('generate_timetable_route') }}" class="btn gradient-btn">Generate Timetable</a>
+    </div>
+    {% endif %}
+    
+    <a href="/" class="btn gradient-btn" style="margin-top:24px;">Back to Home</a>
+</div>
+{% endblock content %}
