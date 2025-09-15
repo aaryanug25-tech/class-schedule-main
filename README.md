@@ -1,7 +1,13 @@
 
 # Class Scheduler Web Application
 
+
 A web-based platform for automated class scheduling in higher education institutions. It allows authorized users to input classrooms, courses, teachers, and class groups, and generates an optimized, color-coded timetable. Teachers can also find available rooms for extra classes and suggest rescheduling options.
+
+**Now safe for public repositories:**
+- All file/database paths are relative (no user-specific or absolute paths)
+- `.gitignore` excludes the database, cache, and secrets by default
+- No sensitive or personal data is included in the codebase
 
 ---
 
@@ -49,11 +55,18 @@ python3 -m pip install flask sqlalchemy markupsafe
 
 ### 3. Run the application
 ```sh
-cd PROJECT
-FLASK_APP=webapp/app.py FLASK_DEBUG=1 flask run --no-debugger --reload --port 5001
+cd PROJECT/webapp
+python3 app.py
 ```
 
-- If you see a `ModuleNotFoundError: No module named 'scheduler'`, make sure you are running the command from the `PROJECT` directory.
+Or, if you prefer Flask CLI:
+```sh
+cd PROJECT/webapp
+export FLASK_APP=app.py
+flask run --port 8080
+```
+
+- The app uses only relative paths, so it works on any machine and is safe for public repos.
 
 ### 4. Open in your browser
 Go to [http://localhost:5001](http://localhost:5001)
@@ -125,8 +138,11 @@ PROJECT/
 └── README.md
 ```
 
+
 ## Notes
-- All data is stored locally in `scheduler.db`. To start fresh, delete this file.
+- All data is stored locally in `scheduler.db` (which is ignored by git).
+- To start fresh, delete `scheduler.db` and restart the app.
+- **Privacy:** No personal or sensitive data is included. Do not commit real user data or secrets.
 
 ## License
 MIT License

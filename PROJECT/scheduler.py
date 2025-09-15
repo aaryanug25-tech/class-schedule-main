@@ -98,9 +98,8 @@ class Timetable(Base):
 # Database setup
 def get_session(db_url=None):
     if db_url is None:
-        # Get the directory where scheduler.py is located
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        db_path = os.path.join(base_dir, 'scheduler.db')
+        # Use a relative path for the database file
+        db_path = 'scheduler.db'
         db_url = f'sqlite:///{db_path}'
     engine = create_engine(db_url)
     Base.metadata.create_all(engine)
@@ -144,178 +143,140 @@ def add_class(session, name, course_teacher_map):
 # Enhanced timetable generation function with improved distribution
 def generate_timetable(session, days, time_slots):
     """
-    Automatically generate a realistic timetable for all classes, courses, and teachers.
-    - Each course meets 2-3 times per week
-    - Classes are distributed throughout the week to create a balanced schedule
-    - Teachers have reasonable schedules with no back-to-back classes across multiple rooms
-    - Avoids scheduling conflicts for rooms, teachers, and classes
-    - Creates realistic academic patterns with consistent timings for courses
-    
-    Returns a summary of the generated timetable.
+    Generate a weekly timetable with hard minimums per course per class:
+    - 3 one-hour lecture sessions
+    - 1 lab session occupying two consecutive one-hour slots
+    Avoids conflicts across rooms, teachers, and classes. Labs prefer rooms
+    whose name contains 'lab' (case-insensitive); falls back to any room.
+
+    Returns a human-readable summary list.
     """
-    from random import sample, choice, shuffle, randint
-    
-    session.query(Timetable).delete()  # Clear previous schedule
+    from random import shuffle
+
+    # Fresh start for draft timetable
+    session.query(Timetable).delete()
     session.commit()
+
     classes = session.query(Class).all()
     classrooms = session.query(Classroom).all()
     summary = []
 
-    # Track usage to avoid conflicts
-    used_classroom_slots = set()  # (day, slot_start, slot_end, classroom_id)
-    used_teacher_slots = set()     # (day, slot_start, slot_end, teacher_id)
-    used_class_slots = set()       # (day, slot_start, slot_end, class_id)
-    
-    # Track course meetings per week
-    course_meetings = {}  # {(class_id, course_id): count}
-    
-    # Distribute courses across days of the week (create realistic patterns)
-    course_schedule_patterns = {}  # {(class_id, course_id): [(day, slot_index)]}
-    
-    # Step 1: Create scheduling patterns for each course
-    for class_ in classes:
-        for cct in class_.course_teachers:
-            course = cct.course
-            key = (class_.id, course.id)
-            course_meetings[key] = 0
-            
-            # Determine how many sessions per week (2-3 is typical for college courses)
-            num_sessions = choice([2, 3])
-            
-            # Create patterns based on common academic scheduling practices
-            possible_patterns = [
-                # MWF pattern (common for 3-session courses)
-                [("Monday", 0), ("Wednesday", 0), ("Friday", 0)],
-                # TTh pattern (common for 2-session courses)
-                [("Tuesday", 0), ("Thursday", 0)],
-                # MW pattern
-                [("Monday", 0), ("Wednesday", 0)],
-                # MF pattern
-                [("Monday", 0), ("Friday", 0)],
-                # WF pattern
-                [("Wednesday", 0), ("Friday", 0)]
-            ]
-            
-            # Choose pattern based on number of sessions
-            if num_sessions == 2:
-                pattern = choice([p for p in possible_patterns if len(p) <= 2])
-                # If we got a 3-day pattern, take just the first two days
-                pattern = pattern[:2]
-            else:
-                pattern = choice([p for p in possible_patterns if len(p) == 3])
-                
-            # Choose a consistent time slot index for this course (same time on different days)
-            slot_index = randint(0, len(time_slots) - 1)
-            
-            # Update the pattern with the chosen time slot index
-            pattern = [(day, slot_index) for day, _ in pattern]
-            
-            # Store the pattern
-            course_schedule_patterns[key] = pattern
-    
-    # Step 2: Apply the patterns and schedule each course
-    # Randomize the order of classes to avoid bias in scheduling
-    shuffled_classes = list(classes)
-    shuffle(shuffled_classes)
-    
-    for class_ in shuffled_classes:
-        for cct in class_.course_teachers:
+    # Separate lab-friendly rooms
+    lab_rooms = [r for r in classrooms if 'lab' in (r.name or '').lower()]
+    non_lab_rooms = [r for r in classrooms if r not in lab_rooms]
+
+    # Resources usage sets
+    used_classroom_slots = set()  # (day, start, end, room_id)
+    used_teacher_slots = set()    # (day, start, end, teacher_id)
+    used_class_slots = set()      # (day, start, end, class_id)
+
+    # Helper: check if slot is free for all resources
+    def free_for_all(day, start, end, room_id, teacher_id, class_id):
+        return (
+            (day, start, end, room_id) not in used_classroom_slots and
+            (day, start, end, teacher_id) not in used_teacher_slots and
+            (day, start, end, class_id) not in used_class_slots
+        )
+
+    # Helper: book a slot
+    def book_slot(day, start, end, room, class_, course, teacher):
+        tt = Timetable(
+            class_id=class_.id,
+            classroom_id=room.id,
+            course_id=course.id,
+            teacher_id=teacher.id,
+            day=day,
+            start_time=start,
+            end_time=end,
+        )
+        session.add(tt)
+        used_classroom_slots.add((day, start, end, room.id))
+        used_teacher_slots.add((day, start, end, teacher.id))
+        used_class_slots.add((day, start, end, class_.id))
+        summary.append(f"{class_.name} - {course.name} in {room.name} by {teacher.name} on {day} {start}-{end}")
+
+    # Use all provided days for even distribution
+    week_days = list(days)
+
+    # Precompute adjacent slot pairs for labs (allowing small breaks between slots)
+    consecutive_pairs = []  # list of (i, i+1, (start,end) for i, (start,end) for i+1)
+    for i in range(len(time_slots) - 1):
+        s1, e1 = time_slots[i]
+        s2, e2 = time_slots[i + 1]
+        # We treat two adjacent one-hour slots as a 2-hour lab block
+        consecutive_pairs.append((i, i + 1, (s1, e1), (s2, e2)))
+
+    # Shuffle classes for fairness
+    classes_list = list(classes)
+    shuffle(classes_list)
+
+    for class_ in classes_list:
+        # For each course assigned to the class
+        ccts = list(class_.course_teachers)
+        shuffle(ccts)
+        for cct in ccts:
             course = cct.course
             teacher = cct.teacher
-            key = (class_.id, course.id)
-            
-            if key not in course_schedule_patterns:
-                continue
-                
-            pattern = course_schedule_patterns[key]
-            
-            for day_idx, slot_idx in pattern:
-                slot = time_slots[slot_idx]
-                scheduled = False
-                
-                # Try different classrooms
-                shuffled_classrooms = list(classrooms)
-                shuffle(shuffled_classrooms)
-                
-                for classroom in shuffled_classrooms:
-                    # Check for conflicts
-                    if (day_idx, slot[0], slot[1], classroom.id) in used_classroom_slots:
-                        continue
-                    if (day_idx, slot[0], slot[1], teacher.id) in used_teacher_slots:
-                        continue
-                    if (day_idx, slot[0], slot[1], class_.id) in used_class_slots:
-                        continue
-                        
-                    # Schedule the class
-                    timetable = Timetable(
-                        class_id=class_.id,
-                        classroom_id=classroom.id,
-                        course_id=course.id,
-                        teacher_id=teacher.id,
-                        day=day_idx,
-                        start_time=slot[0],
-                        end_time=slot[1]
-                    )
-                    session.add(timetable)
-                    
-                    # Mark resources as used
-                    used_classroom_slots.add((day_idx, slot[0], slot[1], classroom.id))
-                    used_teacher_slots.add((day_idx, slot[0], slot[1], teacher.id))
-                    used_class_slots.add((day_idx, slot[0], slot[1], class_.id))
-                    
-                    # Update meeting count
-                    course_meetings[key] = course_meetings.get(key, 0) + 1
-                    
-                    summary.append(f"{class_.name} - {course.name} in {classroom.name} by {teacher.name} on {day_idx} {slot[0]}-{slot[1]}")
-                    scheduled = True
-                    break
-                
-                # If couldn't schedule on preferred day/slot, try alternative slots
-                if not scheduled:
-                    # Try other slots on the same day as a fallback
-                    for alt_slot_idx, slot in enumerate(time_slots):
-                        if alt_slot_idx == slot_idx:  # Skip the original slot we already tried
-                            continue
-                            
-                        for classroom in shuffled_classrooms:
-                            # Check for conflicts
-                            if (day_idx, slot[0], slot[1], classroom.id) in used_classroom_slots:
-                                continue
-                            if (day_idx, slot[0], slot[1], teacher.id) in used_teacher_slots:
-                                continue
-                            if (day_idx, slot[0], slot[1], class_.id) in used_class_slots:
-                                continue
-                                
-                            # Schedule the class
-                            timetable = Timetable(
-                                class_id=class_.id,
-                                classroom_id=classroom.id,
-                                course_id=course.id,
-                                teacher_id=teacher.id,
-                                day=day_idx,
-                                start_time=slot[0],
-                                end_time=slot[1]
-                            )
-                            session.add(timetable)
-                            
-                            # Mark resources as used
-                            used_classroom_slots.add((day_idx, slot[0], slot[1], classroom.id))
-                            used_teacher_slots.add((day_idx, slot[0], slot[1], teacher.id))
-                            used_class_slots.add((day_idx, slot[0], slot[1], class_.id))
-                            
-                            # Update meeting count
-                            course_meetings[key] = course_meetings.get(key, 0) + 1
-                            
-                            summary.append(f"{class_.name} - {course.name} in {classroom.name} by {teacher.name} on {day_idx} {slot[0]}-{slot[1]}")
-                            scheduled = True
-                            break
-                        
-                        if scheduled:
-                            break
 
-    # Commit all changes at once for better performance
+            # 1) Schedule LAB (2 consecutive slots) - shuffle days for even spread
+            lab_scheduled = False
+            lab_days = week_days[:]
+            shuffle(lab_days)
+            for day in lab_days:
+                for i, j, (s1, e1), (s2, e2) in consecutive_pairs:
+                    # Try lab-preferred rooms first, then others
+                    for room in (lab_rooms + non_lab_rooms):
+                        if (
+                            free_for_all(day, s1, e1, room.id, teacher.id, class_.id) and
+                            free_for_all(day, s2, e2, room.id, teacher.id, class_.id)
+                        ):
+                            # Book both consecutive slots
+                            book_slot(day, s1, e1, room, class_, course, teacher)
+                            book_slot(day, s2, e2, room, class_, course, teacher)
+                            lab_scheduled = True
+                            break
+                    if lab_scheduled:
+                        break
+                if lab_scheduled:
+                    break
+
+            # 2) Schedule 3 LECTURES (single slots), shuffle days for even spread
+            lectures_needed = 3
+            lecture_days = week_days[:]
+            shuffle(lecture_days)
+            slot_indices = list(range(len(time_slots)))
+            for day in lecture_days:
+                if lectures_needed == 0:
+                    break
+                shuffle(slot_indices)
+                for idx in slot_indices:
+                    start, end = time_slots[idx]
+                    # Prefer non-lab rooms for lectures, but allow labs if needed
+                    for room in (non_lab_rooms + lab_rooms):
+                        if free_for_all(day, start, end, room.id, teacher.id, class_.id):
+                            book_slot(day, start, end, room, class_, course, teacher)
+                            lectures_needed -= 1
+                            break
+                    if lectures_needed == 0:
+                        break
+
+            # Fallback: if still not enough, try any remaining weekday/slot/room combinations
+            if lectures_needed > 0:
+                for day in week_days:
+                    if lectures_needed == 0:
+                        break
+                    for start, end in time_slots:
+                        if lectures_needed == 0:
+                            break
+                        for room in (non_lab_rooms + lab_rooms):
+                            if free_for_all(day, start, end, room.id, teacher.id, class_.id):
+                                book_slot(day, start, end, room, class_, course, teacher)
+                                lectures_needed -= 1
+                                if lectures_needed == 0:
+                                    break
+
     session.commit()
-    print("Timetable generation complete.")
+    print("Timetable generation complete with 3 lectures + 1 lab per course.")
     return summary
 
 def reschedule_class(session, timetable_id, new_day, new_start, new_end, new_classroom_id=None):
@@ -429,14 +390,12 @@ if __name__ == "__main__":
     session = get_session()
     
     # Example usage with more realistic data
-    # Add classrooms
+    # Add 60 classrooms (55 regular, 5 labs)
     if not session.query(Classroom).first():
-        add_classroom(session, "Room 101", 40)
-        add_classroom(session, "Room 102", 35)
-        add_classroom(session, "Room 103", 30)
-        add_classroom(session, "Lab 201", 25)
-        add_classroom(session, "Lab 202", 25)
-        add_classroom(session, "Lecture Hall A", 60)
+        for i in range(1, 56):
+            add_classroom(session, f"Room {i:03}", 40)
+        for i in range(1, 6):
+            add_classroom(session, f"Lab {i:03}", 30)
     
     # Add courses with more realistic names
     if not session.query(Course).first():
@@ -448,6 +407,14 @@ if __name__ == "__main__":
         add_course(session, "Digital Electronics")
         add_course(session, "Statistics")
         add_course(session, "Database Systems")
+        add_course(session, "Linear Algebra")
+        add_course(session, "Operating Systems")
+        add_course(session, "Microprocessors")
+        add_course(session, "Discrete Mathematics")
+        add_course(session, "Environmental Science")
+        add_course(session, "Artificial Intelligence")
+        add_course(session, "Machine Learning")
+        add_course(session, "Software Engineering")
     
     # Add teachers with subject specialties
     if not session.query(Teacher).first():
@@ -459,39 +426,35 @@ if __name__ == "__main__":
         add_teacher(session, "Prof. Miller", "Electronics")
         add_teacher(session, "Dr. Wilson", "Mathematics")
         add_teacher(session, "Prof. Moore", "Computer Science")
+        add_teacher(session, "Dr. Taylor", "Mathematics")
+        add_teacher(session, "Dr. Anderson", "Statistics")
+        add_teacher(session, "Prof. Thomas", "Environmental Science")
+        add_teacher(session, "Dr. Jackson", "Artificial Intelligence")
+        add_teacher(session, "Prof. White", "Machine Learning")
+        add_teacher(session, "Dr. Harris", "Software Engineering")
+        add_teacher(session, "Prof. Martin", "Microprocessors")
+        add_teacher(session, "Dr. Thompson", "Operating Systems")
+        add_teacher(session, "Prof. Garcia", "Discrete Mathematics")
+        add_teacher(session, "Dr. Martinez", "Linear Algebra")
     
     # Add classes with multiple courses per class
     if not session.query(Class).first():
-        # Computer Science department
-        add_class(session, "CS101", {
-            3: 3,  # Intro to Programming by Dr. Williams
-            4: 4,  # Data Structures by Prof. Brown
-            8: 8   # Database Systems by Prof. Moore
-        })
-        
-        # Electronics department
-        add_class(session, "EC101", {
-            2: 2,  # Physics Mechanics by Prof. Johnson
-            6: 6,  # Digital Electronics by Prof. Miller
-            7: 7   # Statistics by Dr. Wilson
-        })
-        
-        # Science department
-        add_class(session, "SC101", {
-            1: 1,  # Calculus I by Dr. Smith
-            2: 2,  # Physics Mechanics by Prof. Johnson
-            5: 5   # Chemistry by Dr. Davis
-        })
-        
-        # First year undergraduate
-        add_class(session, "FY-UG", {
-            1: 1,  # Calculus I by Dr. Smith
-            3: 3,  # Intro to Programming by Dr. Williams
-            5: 5   # Chemistry by Dr. Davis
-        })
+        # Map all teachers and courses to new classes
+        teacher_objs = session.query(Teacher).all()
+        course_objs = session.query(Course).all()
+        # Create 8 demo classes, each with 2-3 courses and teachers
+        for i in range(8):
+            class_name = f"Class_{i+1:02}"
+            # Assign 2-3 courses and teachers per class, cycling through the lists
+            course_teacher_map = {}
+            for j in range(2 + (i % 2)):
+                course_idx = (i*2 + j) % len(course_objs)
+                teacher_idx = (i*2 + j) % len(teacher_objs)
+                course_teacher_map[course_objs[course_idx].id] = teacher_objs[teacher_idx].id
+            add_class(session, class_name, course_teacher_map)
     
     # Generate timetable with more realistic time slots
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
     time_slots = [
         ("09:00", "10:00"),
         ("10:15", "11:15"),
@@ -509,6 +472,31 @@ if __name__ == "__main__":
     
     print("\nFull Timetable:")
     print_timetable(session)
+
+    # Auto-approve the latest generated timetable for dashboard analytics
+    from models import ApprovedTimetable, Timetable
+    import json
+    # Get all timetable entries
+    timetable_entries = session.query(Timetable).all()
+    timetable_data = []
+    for entry in timetable_entries:
+        timetable_data.append({
+            'class': entry.class_.name,
+            'classroom': entry.classroom.name,
+            'course': entry.course.name,
+            'teacher': entry.teacher.name,
+            'day': entry.day,
+            'start_time': entry.start_time,
+            'end_time': entry.end_time
+        })
+    approved = ApprovedTimetable(
+        name="Auto Approved Timetable",
+        description="Automatically approved after seeding",
+        timetable_data=json.dumps(timetable_data),
+        is_active=True
+    )
+    session.add(approved)
+    session.commit()
 
     # Example: Find available rooms for extra class
     print("\nAvailable rooms for extra class on Monday 10:00-11:00:")
