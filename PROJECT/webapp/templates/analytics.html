@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='chart.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1 class="main-title">Analytics</h1>
+  <div class="card">
+    <div id="analytics-summary" class="input-row" style="flex-wrap:wrap; gap:16px;">
+      <div><strong>Most used room:</strong> <span id="most-room">–</span></div>
+      <div><strong>Least used room:</strong> <span id="least-room">–</span></div>
+      <div><strong>Avg teaching hours/teacher:</strong> <span id="avg-hours">–</span></div>
+      <div><strong>On-time scheduling rate:</strong> <span id="on-time">–</span></div>
+    </div>
+  </div>
+  <div class="analytics-section">
+    <h2><i class="fas fa-chart-pie"></i> Charts</h2>
+    <div class="chart-grid">
+      <div class="chart-container"><div class="chart-box"><canvas id="teacherClassChart"></canvas></div></div>
+      <div class="chart-container"><div class="chart-box"><canvas id="roomUsageChart"></canvas></div></div>
+      <div class="chart-container"><div class="chart-box"><canvas id="courseDistributionChart"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(async function() {
+  try {
+    const res = await fetch('/api/analytics/summary');
+    const d = await res.json();
+    if (d.most_used_classroom) {
+      document.getElementById('most-room').textContent = `${d.most_used_classroom.room} (${d.most_used_classroom.count})`;
+    }
+    if (d.least_used_classroom) {
+      document.getElementById('least-room').textContent = `${d.least_used_classroom.room} (${d.least_used_classroom.count})`;
+    }
+    if (d.avg_teaching_hours_per_teacher != null) {
+      document.getElementById('avg-hours').textContent = d.avg_teaching_hours_per_teacher + ' h';
+    }
+    if (d.on_time_scheduling_rate != null) {
+      document.getElementById('on-time').textContent = d.on_time_scheduling_rate + '%';
+    }
+  } catch (e) { console.error(e); }
+})();
+</script>
+{% endblock %}

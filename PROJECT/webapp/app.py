@@ -6,17 +6,178 @@ import json
 import datetime
 import collections
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from scheduler import get_session, add_classroom, add_course, add_teacher, add_class, generate_timetable, find_available_rooms, suggest_reschedule_options, get_current_timetable_data, Course, Teacher, Class, Classroom, Timetable, User, ClassCourseTeacher
-from models import ApprovedTimetable, RoomChange, ClassCancellation
+from scheduler import get_session, add_classroom, add_course, add_teacher, add_class, generate_timetable, find_available_rooms, suggest_reschedule_options, get_current_timetable_data, Course, Teacher, Class, Classroom, Timetable, User, ClassCourseTeacher, Base
+from models import ApprovedTimetable, RoomChange, ClassCancellation, Event, Feedback
+
 from sqlalchemy.exc import IntegrityError
 from flask import session as flask_session
 import csv
 from io import TextIOWrapper
 
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
 app.secret_key = 'your_secret_key'  # Change this to a random secret key
 session = get_session()  # Will use default relative path
+
+# Exam model for scheduling exams
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, Boolean, DateTime, Text
+from sqlalchemy.orm import relationship
+
+class Exam(Base):
+    __tablename__ = 'exams'
+    id = Column(Integer, primary_key=True)
+    course_id = Column(Integer, ForeignKey('courses.id'))
+    room_id = Column(Integer, ForeignKey('classrooms.id'))
+    date = Column(Date)
+    start_time = Column(String)
+    end_time = Column(String)
+    course = relationship('Course')
+    room = relationship('Classroom')
+
+class ApprovedExamSchedule(Base):
+    __tablename__ = 'approved_exam_schedules'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, default='Approved Exam Schedule')
+    description = Column(String)
+    schedule_data = Column(Text)  # JSON string of approved exams
+    approved_at = Column(DateTime, default=datetime.datetime.utcnow)
+    approved_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    is_active = Column(Boolean, default=True)
+
+# Ensure all tables (including Exam) are created
+try:
+    engine = session.get_bind()
+    if engine is not None:
+        Base.metadata.create_all(engine)
+except Exception as _e:
+    pass
+
+# ---- Exams: auto-generation helpers ----
+def next_monday(from_date=None):
+    d = from_date or datetime.date.today()
+    days_ahead = (7 - d.weekday()) % 7  # 0=Mon
+    days_ahead = 7 if days_ahead == 0 else days_ahead
+    return d + datetime.timedelta(days=days_ahead)
+
+def generate_exam_schedule(db_session, start_date=None, num_days=5, reset=False):
+    """Generate one exam per course across the upcoming exam window.
+    - Distributes exams across days and slots
+    - Avoids room conflicts and class overlap (a class can't have two exams at the same time)
+    Returns (created_count, skipped_count).
+    """
+    # Optional reset (overwrite current draft exams)
+    if reset:
+        db_session.query(Exam).delete()
+        db_session.commit()
+
+    # Compute exam window
+    start = start_date or next_monday()
+    days = [start + datetime.timedelta(days=i) for i in range(num_days)]
+
+    # Exam slots per day
+    slots = [
+        ("09:00", "11:00"),
+        ("11:30", "13:30"),
+        ("14:00", "16:00"),
+    ]
+
+    courses = db_session.query(Course).order_by(Course.name.asc()).all()
+    rooms = db_session.query(Classroom).order_by(Classroom.name.asc()).all()
+
+    # Build course -> classes mapping to avoid overlapping exams for the same class
+    course_to_class_ids = collections.defaultdict(set)
+    for cct in db_session.query(ClassCourseTeacher).all():
+        course_to_class_ids[cct.course_id].add(cct.class_id)
+
+    used_room_slots = set()      # (date, start, end, room_id)
+    used_class_slots = set()     # (date, start, end, class_id)
+    courses_already_scheduled = set()
+
+    # If not resetting, consider existing draft exams to avoid duplicates
+    if not reset:
+        existing = db_session.query(Exam).all()
+        for ex in existing:
+            if ex.room_id and ex.date and ex.start_time and ex.end_time:
+                used_room_slots.add((ex.date, ex.start_time, ex.end_time, ex.room_id))
+            # mark classes occupied for this course's related classes
+            rel_class_ids = [cct.class_id for cct in db_session.query(ClassCourseTeacher).filter_by(course_id=ex.course_id)]
+            for cid in rel_class_ids:
+                if ex.date and ex.start_time and ex.end_time:
+                    used_class_slots.add((ex.date, ex.start_time, ex.end_time, cid))
+            courses_already_scheduled.add(ex.course_id)
+
+    created = 0
+    skipped = 0
+
+    for course in courses:
+        if course.id in courses_already_scheduled:
+            skipped += 1
+            continue
+        scheduled = False
+        related_class_ids = course_to_class_ids.get(course.id, set())
+
+        for day in days:
+            for start_time, end_time in slots:
+                # Ensure no related class has another exam at this slot
+                class_conflict = any((day, start_time, end_time, cid) in used_class_slots for cid in related_class_ids)
+                if class_conflict:
+                    continue
+
+                # Find a free room for this slot
+                for room in rooms:
+                    if (day, start_time, end_time, room.id) in used_room_slots:
+                        continue
+
+                    # Schedule exam
+                    exam = Exam(
+                        course_id=course.id,
+                        room_id=room.id,
+                        date=day,
+                        start_time=start_time,
+                        end_time=end_time,
+                    )
+                    db_session.add(exam)
+                    db_session.flush()
+
+                    # Mark resources
+                    used_room_slots.add((day, start_time, end_time, room.id))
+                    for cid in related_class_ids:
+                        used_class_slots.add((day, start_time, end_time, cid))
+
+                    created += 1
+                    scheduled = True
+                    break
+
+                if scheduled:
+                    break
+            if scheduled:
+                break
+
+        if not scheduled:
+            skipped += 1
+
+    db_session.commit()
+    return created, skipped
+
+def get_active_approved_exam_schedule(db_session):
+    return db_session.query(ApprovedExamSchedule).filter_by(is_active=True).order_by(ApprovedExamSchedule.approved_at.desc()).first()
+
+def get_current_exam_data(db_session):
+    exams = db_session.query(Exam).order_by(Exam.date.asc(), Exam.start_time.asc()).all()
+    return [
+        {
+            'id': ex.id,
+            'course_id': ex.course_id,
+            'course': ex.course.name if ex.course else None,
+            'room_id': ex.room_id,
+            'room': ex.room.name if ex.room else None,
+            'date': ex.date.strftime('%Y-%m-%d') if ex.date else None,
+            'start_time': ex.start_time,
+            'end_time': ex.end_time,
+        }
+        for ex in exams
+    ]
 
 # Jinja filter to assign a color class to each course
 def course_color_class(cell):
@@ -88,11 +249,298 @@ def get_classes():
 def get_classrooms():
     return session.query(Classroom).all()
 
+# Exam Scheduler: book and list exams
+@app.route('/exam_scheduler', methods=['GET', 'POST'])
+def exam_scheduler():
+    if request.method == 'POST':
+        course_id = request.form.get('course_id')
+        room_id = request.form.get('room_id')
+        date = request.form.get('date')
+        start_time = request.form.get('start_time')
+        end_time = request.form.get('end_time')
+
+        if all([course_id, room_id, date, start_time, end_time]):
+            try:
+                exam = Exam(
+                    course_id=int(course_id),
+                    room_id=int(room_id),
+                    date=datetime.datetime.strptime(date, '%Y-%m-%d').date(),
+                    start_time=start_time,
+                    end_time=end_time
+                )
+                session.add(exam)
+                session.commit()
+                flash('Exam scheduled successfully.', 'success')
+                return redirect(url_for('exam_scheduler'))
+            except Exception as e:
+                session.rollback()
+                flash(f'Error scheduling exam: {e}', 'danger')
+        else:
+            flash('Please fill all fields.', 'danger')
+
+    exams = session.query(Exam).order_by(Exam.date.asc(), Exam.start_time.asc()).all()
+    approved = get_active_approved_exam_schedule(session)
+    return render_template('exam_scheduler.html', exams=exams, approved_exams=approved)
+
+@app.route('/exams/generate', methods=['POST'])
+def generate_exams():
+    """Generate exam schedule automatically and redirect to the scheduler page."""
+    try:
+        reset = request.form.get('reset') == 'true'
+        days = int(request.form.get('days', '5'))
+        created, skipped = generate_exam_schedule(session, num_days=days, reset=reset)
+        msg = f"Generated {created} exams"
+        if skipped:
+            msg += f"; skipped {skipped} due to unavailable slots"
+        flash(msg + '.', 'success')
+    except Exception as e:
+        session.rollback()
+        flash(f'Failed to generate exams: {e}', 'danger')
+    return redirect(url_for('exam_scheduler'))
+
+@app.route('/exams/approve', methods=['POST'])
+def approve_exams():
+    """Admin approves current draft exams. Stores snapshot and clears drafts."""
+    try:
+        # create or get demo admin
+        user = session.query(User).filter_by(username="demo_admin").first()
+        if not user:
+            user = User(username="demo_admin", is_admin_user=True)
+            user.set_password("demo123")
+            session.add(user)
+            session.commit()
+
+        # deactivate previous approved schedules
+        for prev in session.query(ApprovedExamSchedule).filter_by(is_active=True).all():
+            prev.is_active = False
+
+        snapshot = json.dumps(get_current_exam_data(session))
+        approved = ApprovedExamSchedule(
+            name=request.form.get('name', 'Approved Exam Schedule'),
+            description=request.form.get('description', f'Exams approved by {user.username}'),
+            schedule_data=snapshot,
+            approved_by=user.id,
+            is_active=True
+        )
+        session.add(approved)
+        # optional: clear drafts post-approval
+        session.query(Exam).delete()
+        session.commit()
+        flash('Exam schedule approved and published.', 'success')
+    except Exception as e:
+        session.rollback()
+        flash(f'Failed to approve exams: {e}', 'danger')
+    return redirect(url_for('exam_scheduler'))
+
+@app.route('/exams/reset', methods=['POST'])
+def reset_draft_exams():
+    """Clear current draft exams without touching approved schedules."""
+    try:
+        session.query(Exam).delete()
+        session.commit()
+        flash('Draft exams cleared.', 'info')
+    except Exception as e:
+        session.rollback()
+        flash(f'Failed to clear drafts: {e}', 'danger')
+    return redirect(url_for('exam_scheduler'))
+
+@app.route('/api/exams')
+def api_exams():
+    exams = session.query(Exam).order_by(Exam.date.asc(), Exam.start_time.asc()).all()
+    data = [
+        {
+            'id': ex.id,
+            'course': ex.course.name if ex.course else None,
+            'room': ex.room.name if ex.room else None,
+            'date': ex.date.strftime('%Y-%m-%d') if ex.date else None,
+            'start_time': ex.start_time,
+            'end_time': ex.end_time,
+        }
+        for ex in exams
+    ]
+    return jsonify({'exams': data})
+
 @app.route('/')
 def index():
     # Include the CSS files as a list for the template
     css_files = ['style.css', 'room_changes.css']
     return render_template('index.html', css_files=css_files)
+
+@app.route('/favicon.ico')
+def favicon():
+    # Return empty response to avoid 404 noise for favicon requests in dev
+    return ('', 204)
+
+@app.route('/api/timetable-conflicts')
+def api_timetable_conflicts():
+    """Return detected conflicts across rooms, teachers, and classes from current timetable."""
+    conflicts = []
+    entries = session.query(Timetable).all()
+    # Build indexes per day and time for fast detection
+    by_slot = collections.defaultdict(list)
+    for t in entries:
+        key = (t.day, t.start_time, t.end_time)
+        by_slot[key].append(t)
+
+    for key, items in by_slot.items():
+        day, start, end = key
+        # Check room conflicts
+        rooms = collections.defaultdict(list)
+        teachers = collections.defaultdict(list)
+        classes = collections.defaultdict(list)
+        for t in items:
+            rooms[t.classroom_id].append(t)
+            teachers[t.teacher_id].append(t)
+            classes[t.class_id].append(t)
+        for rid, lst in rooms.items():
+            if len(lst) > 1:
+                conflicts.append({
+                    'type': 'Room',
+                    'resource': session.query(Classroom).get(rid).name,
+                    'day': day,
+                    'start': start,
+                    'end': end,
+                    'entries': [
+                        {
+                            'id': x.id,
+                            'class': session.query(Class).get(x.class_id).name,
+                            'course': session.query(Course).get(x.course_id).name,
+                            'teacher': session.query(Teacher).get(x.teacher_id).name,
+                            'class_id': x.class_id,
+                            'course_id': x.course_id,
+                            'teacher_id': x.teacher_id,
+                            'classroom_id': x.classroom_id
+                        } for x in lst
+                    ]
+                })
+        for tid, lst in teachers.items():
+            if len(lst) > 1:
+                conflicts.append({
+                    'type': 'Teacher',
+                    'resource': session.query(Teacher).get(tid).name,
+                    'day': day,
+                    'start': start,
+                    'end': end,
+                    'entries': [
+                        {
+                            'id': x.id,
+                            'class': session.query(Class).get(x.class_id).name,
+                            'course': session.query(Course).get(x.course_id).name,
+                            'room': session.query(Classroom).get(x.classroom_id).name,
+                            'class_id': x.class_id,
+                            'course_id': x.course_id,
+                            'teacher_id': x.teacher_id,
+                            'classroom_id': x.classroom_id
+                        } for x in lst
+                    ]
+                })
+        for cid, lst in classes.items():
+            if len(lst) > 1:
+                conflicts.append({
+                    'type': 'Class',
+                    'resource': session.query(Class).get(cid).name,
+                    'day': day,
+                    'start': start,
+                    'end': end,
+                    'entries': [
+                        {
+                            'id': x.id,
+                            'course': session.query(Course).get(x.course_id).name,
+                            'teacher': session.query(Teacher).get(x.teacher_id).name,
+                            'room': session.query(Classroom).get(x.classroom_id).name,
+                            'class_id': x.class_id,
+                            'course_id': x.course_id,
+                            'teacher_id': x.teacher_id,
+                            'classroom_id': x.classroom_id
+                        } for x in lst
+                    ]
+                })
+    return jsonify({'conflicts': conflicts})
+
+@app.route('/conflicts')
+def conflicts_page():
+    return render_template('conflicts.html')
+
+@app.route('/events', methods=['GET', 'POST'])
+def events_scheduler():
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        room_id = request.form.get('room_id')
+        recurrence = request.form.get('recurrence', 'one-time')
+        start_time = request.form.get('start_time')
+        end_time = request.form.get('end_time')
+
+        # Parse dates depending on recurrence type
+        date = request.form.get('date')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        day_of_week = request.form.get('day_of_week')
+        day_of_month = request.form.get('day_of_month')
+
+        try:
+            e = Event(
+                title=title,
+                description=description,
+                room_id=int(room_id),
+                recurrence=recurrence,
+                start_time=start_time,
+                end_time=end_time,
+                created_by=flask_session.get('user_id')
+            )
+            if recurrence == 'one-time' and date:
+                e.date = datetime.datetime.strptime(date, '%Y-%m-%d')
+            else:
+                if start_date:
+                    e.start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+                if end_date:
+                    e.end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+                e.day_of_week = day_of_week
+                e.day_of_month = int(day_of_month) if day_of_month else None
+
+            # Simple conflict check with Timetable and other events on exact slot
+            # Check room availability for one-time date or representative day
+            def overlaps(a_start, a_end, b_start, b_end):
+                return not (a_end <= b_start or b_end <= a_start)
+
+            # For one-time event, verify timetable and events on that day
+            if recurrence == 'one-time' and e.date:
+                # Check timetable
+                tt = session.query(Timetable).filter(
+                    Timetable.day == e.date.strftime('%A'),
+                    Timetable.classroom_id == e.room_id
+                ).all()
+                for t in tt:
+                    if overlaps(e.start_time, e.end_time, t.start_time, t.end_time):
+                        flash('Room is occupied by timetable at that time.', 'danger')
+                        return redirect(url_for('events_scheduler'))
+                # Check other events same day
+                evs = session.query(Event).filter(
+                    Event.room_id == e.room_id,
+                    Event.recurrence == 'one-time'
+                ).all()
+                for oe in evs:
+                    if oe.date and oe.date.date() == e.date.date():
+                        if overlaps(e.start_time, e.end_time, oe.start_time, oe.end_time):
+                            flash('Room already booked for another event at that time.', 'danger')
+                            return redirect(url_for('events_scheduler'))
+
+            session.add(e)
+            session.commit()
+            flash('Event saved.', 'success')
+            return redirect(url_for('events_scheduler'))
+        except Exception as ex:
+            session.rollback()
+            flash(f'Failed to save event: {ex}', 'danger')
+
+    events = session.query(Event).order_by(Event.created_at.desc()).all()
+    return render_template('events_scheduler.html', rooms=get_classrooms(), events=events)
+
+# Backwards-compatible alias: if any template or bookmark uses /events_scheduler,
+# redirect it to the current /events endpoint to avoid duplicate menu items/links.
+@app.route('/events_scheduler')
+def events_scheduler_legacy():
+    return redirect(url_for('events_scheduler'))
 
 @app.route('/add_classroom', methods=['GET', 'POST'])
 def add_classroom_route():
@@ -179,7 +627,7 @@ def add_class_route():
 
 @app.route('/generate_timetable', methods=['GET', 'POST'])
 def generate_timetable_route():
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    days_all = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     
     # More realistic time slots with breaks between classes
     time_slots = [
@@ -204,6 +652,21 @@ def generate_timetable_route():
     
     # Check if we should regenerate the timetable or use the active approved one
     regenerate = request.args.get('regenerate', 'true').lower() == 'true'
+    # View mode: 'day' (default) or 'week'
+    view_mode = request.args.get('view', 'day')
+    # Day filter: default to today if no explicit day provided (when in day view)
+    requested_day = request.args.get('day')
+    today_name = datetime.datetime.now().strftime('%A')
+    if view_mode == 'week':
+        days = days_all
+        selected_day = today_name if today_name in days_all else 'Monday'
+    else:
+        if requested_day and requested_day in days_all:
+            days = [requested_day]
+            selected_day = requested_day
+        else:
+            selected_day = today_name if today_name in days_all else 'Monday'
+            days = [selected_day]
     
     # Get active approved timetable if exists
     active_timetable = None
@@ -224,7 +687,7 @@ def generate_timetable_route():
         
         for class_ in classes:
             # Initialize grid with empty lists for each day/time slot
-            grid = {slot: {day: [] for day in days} for slot in time_slots}
+            grid = {slot: {day: [] for day in days_all} for slot in time_slots}
             
             # Get all timetable entries for this class
             entries = session.query(Timetable).filter_by(class_id=class_.id).all()
@@ -246,7 +709,7 @@ def generate_timetable_route():
             # Convert empty lists to None for consistent template handling
             # and single-item lists to strings
             for slot in time_slots:
-                for day in days:
+                for day in days_all:
                     if not grid[slot][day]:
                         grid[slot][day] = None
                     elif len(grid[slot][day]) == 1:
@@ -266,12 +729,15 @@ def generate_timetable_route():
     return render_template('timetable.html', 
                           timetable_data=timetable_data, 
                           days=days, 
+                          all_days=days_all,
                           time_slots=time_slots, 
                           college_name=college_name,
                           theme=theme,
                           is_coordinator=is_coordinator,
                           is_approved=bool(active_timetable and not regenerate),
                           active_timetable=active_timetable if not regenerate else None,
+                          selected_day=selected_day,
+                          view_mode=view_mode,
                           current_date_time=current_date_time)
 
 @app.route('/find_rooms', methods=['GET', 'POST'])
@@ -283,6 +749,47 @@ def find_rooms_route():
         end = request.form['end_time']
         available = find_available_rooms(session, day, start, end)
     return render_template('find_rooms.html', available=available)
+
+@app.route('/api/availability')
+def api_availability():
+    """Return availability for rooms and teachers for a given day/time slot.
+    Query params: day=Monday&start_time=HH:MM&end_time=HH:MM
+    """
+    day = request.args.get('day')
+    start_time = request.args.get('start_time')
+    end_time = request.args.get('end_time')
+    if not (day and start_time and end_time):
+        return jsonify({
+            'error': 'Missing required parameters: day, start_time, end_time'
+        }), 400
+
+    # Rooms availability
+    all_rooms = session.query(Classroom).all()
+    occupied_room_ids = {
+        r.classroom_id for r in session.query(Timetable).filter_by(day=day, start_time=start_time, end_time=end_time).all()
+    }
+    rooms = [
+        {
+            'id': r.id,
+            'name': r.name,
+            'available': r.id not in occupied_room_ids
+        } for r in all_rooms
+    ]
+
+    # Teachers availability
+    all_teachers = session.query(Teacher).all()
+    occupied_teacher_ids = {
+        t.teacher_id for t in session.query(Timetable).filter_by(day=day, start_time=start_time, end_time=end_time).all()
+    }
+    teachers = [
+        {
+            'id': t.id,
+            'name': t.name,
+            'available': t.id not in occupied_teacher_ids
+        } for t in all_teachers
+    ]
+
+    return jsonify({'rooms': rooms, 'teachers': teachers})
 
 @app.route('/reschedule', methods=['GET', 'POST'])
 def reschedule_route():
@@ -359,6 +866,12 @@ def room_changes():
     session = get_session()
     room_changes = session.query(RoomChange).order_by(RoomChange.changed_at.desc()).all()
     return render_template('room_changes.html', room_changes=room_changes)
+
+@app.route('/syllabus/<path:course_name>')
+def course_syllabus(course_name):
+    """Basic syllabus page placeholder by course name."""
+    course = session.query(Course).filter(Course.name == course_name).first()
+    return render_template('course_syllabus.html', course=course, course_name=course_name)
 
 @app.route('/change_room', methods=['GET', 'POST'])
 def change_room():
@@ -554,6 +1067,10 @@ def course_coordinator():
 def teachers():
     return render_template('teachers.html')
 
+@app.route('/analytics')
+def analytics_page():
+    return render_template('analytics.html')
+
 @app.route('/api/teacher-class-counts')
 def teacher_class_counts():
     """API endpoint to get the number of classes taught by each teacher."""
@@ -607,6 +1124,94 @@ def teacher_class_counts():
         'labels': labels,
         'counts': counts
     })
+
+@app.route('/api/analytics/summary')
+def analytics_summary():
+    """Aggregate analytics summary: most/least used classrooms, avg teaching hours per teacher, on-time scheduling rate."""
+    # Room usage from Timetable
+    room_counts = collections.defaultdict(int)
+    teacher_minutes = collections.defaultdict(int)
+    entries = session.query(Timetable).all()
+
+    def minutes_between(start, end):
+        fmt = '%H:%M'
+        try:
+            s = datetime.datetime.strptime(start, fmt)
+            e = datetime.datetime.strptime(end, fmt)
+            return max(0, int((e - s).total_seconds() // 60))
+        except Exception:
+            return 0
+
+    for t in entries:
+        room_counts[t.classroom.name] += 1
+        teacher_minutes[t.teacher.name] += minutes_between(t.start_time, t.end_time)
+
+    # Most/least used classrooms
+    most_used = None
+    least_used = None
+    if room_counts:
+        sorted_rooms = sorted(room_counts.items(), key=lambda x: x[1], reverse=True)
+        most_used = {'room': sorted_rooms[0][0], 'count': sorted_rooms[0][1]}
+        least_used = {'room': sorted_rooms[-1][0], 'count': sorted_rooms[-1][1]}
+
+    # Average teaching hours per teacher
+    avg_hours = None
+    if teacher_minutes:
+        avg_minutes = sum(teacher_minutes.values()) / max(1, len(teacher_minutes))
+        avg_hours = round(avg_minutes / 60.0, 2)
+
+    # On-time scheduling rate: defined as sessions not affected by cancellations or room changes
+    total_sessions = len(entries)
+    changes = session.query(RoomChange).count() + session.query(ClassCancellation).count()
+    on_time_rate = None
+    if total_sessions:
+        rate = max(0.0, min(1.0, 1.0 - (changes / total_sessions)))
+        on_time_rate = round(rate * 100, 1)
+
+    return jsonify({
+        'most_used_classroom': most_used,
+        'least_used_classroom': least_used,
+        'avg_teaching_hours_per_teacher': avg_hours,
+        'on_time_scheduling_rate': on_time_rate,
+        'teacher_hours': [
+            {'teacher': k, 'hours': round(v / 60.0, 2)} for k, v in sorted(teacher_minutes.items(), key=lambda x: x[1], reverse=True)
+        ],
+        'room_usage': [
+            {'room': k, 'count': v} for k, v in sorted(room_counts.items(), key=lambda x: x[1], reverse=True)
+        ]
+    })
+
+# Feedback: submit and list
+@app.route('/feedback', methods=['POST'])
+def submit_feedback():
+    category = request.form.get('category') or 'other'
+    title = request.form.get('title')
+    message = request.form.get('message')
+    contact = request.form.get('contact')
+    page_url = request.form.get('page_url')
+    if not (category and title and message):
+        return jsonify({'success': False, 'message': 'Missing required fields.'}), 400
+    try:
+        fb = Feedback(
+            user_id=flask_session.get('user_id'),
+            category=category,
+            title=title[:200],
+            message=message,
+            contact=contact[:200] if contact else None,
+            page_url=page_url[:500] if page_url else None,
+            status='new'
+        )
+        session.add(fb)
+        session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/feedback')
+def admin_feedback():
+    items = session.query(Feedback).order_by(Feedback.created_at.desc()).all()
+    return render_template('admin_feedback.html', items=items)
 
 @app.route('/api/room-usage')
 def room_usage():
@@ -810,7 +1415,7 @@ def admin():
                 target_user.is_admin_user = not target_user.is_admin_user
                 session.commit()
                 flash(f"Admin status updated for {target_user.username}.", 'success')
-            return redirect(url_for('admin_route'))
+            return redirect(url_for('admin'))
             
     return render_template('admin.html', users=session.query(User).all())
 
@@ -933,4 +1538,5 @@ def activate_timetable(id):
         return redirect(url_for('approved_timetables'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=8080)
+

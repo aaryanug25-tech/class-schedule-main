@@ -1,3 +1,18 @@
+/* Force all input, textarea, and select fields to use dark theme colors globally */
+input, textarea, select {
+    background: #161b22 !important;
+    color: #c9d1d9 !important;
+    border: 1px solid #30363d !important;
+}
+/* Ensure main content is not covered by sidebar */
+.container {
+    margin-left: 260px !important;
+}
+/* Force dark GitHub-style background everywhere */
+html, body, .container {
+    background: #0d1117 !important;
+    color: #c9d1d9 !important;
+}
 /* Style textarea to match dark theme */
 .container textarea {
     flex: 1 1 180px;
@@ -270,6 +285,8 @@ body {
     color: var(--text);
     font-family: system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
     margin: 0;
+    /* Ensure the layout uses full viewport height so sidebar scrolling behaves correctly */
+    min-height: 100vh;
 }
 
 /* Thin purple bar like GitHub's brand bar */
@@ -288,15 +305,20 @@ body {
 .sidebar {
     position: fixed; left: 32px; top: 38px; bottom: 32px; width: 220px;
     background: var(--panel); border-radius: 20px; box-shadow: 0 0 0 1px var(--border), 0 8px 24px rgba(1,4,9,0.35);
-    padding: 28px 0; z-index: 100; display: flex; flex-direction: column; overflow: hidden;
+    padding: 28px 0; z-index: 100; display: flex; flex-direction: column;
+    overflow: visible !important;
+    height: auto;
+    max-height: none;
 }
 .sidebar-header { padding: 0 24px 10px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
 .sidebar-logo { color: var(--text); font-size: 1.35rem; font-weight: 800; margin: 0; letter-spacing: .3px; }
-.sidebar-menu { list-style: none; margin: 6px 0 0; padding: 0; flex: 1; }
+.sidebar-menu { list-style: none; margin: 6px 0 0; padding: 0; flex: unset; overflow: visible; }
 .sidebar-menu li { margin: 4px 0; }
 .sidebar-menu a { display: flex; align-items: center; gap: 12px; padding: 10px 18px 10px 22px; color: var(--text); text-decoration: none; border-radius: 10px; font-weight: 600; }
 .sidebar-menu a:hover, .sidebar-menu a.active { background: var(--hover); color: #fff; }
 .sidebar-menu .icon { width: 20px; text-align: center; color: var(--accent); }
+
+
 
 /* Main container */
 /* Main container */

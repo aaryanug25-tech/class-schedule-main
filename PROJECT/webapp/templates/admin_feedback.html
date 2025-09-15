@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container">
+  <h1 class="main-title">User Feedback</h1>
+  <div class="card">
+    {% if items %}
+      <table class="timetable-table" style="width:100%">
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Category</th>
+            <th>Title</th>
+            <th>Message</th>
+            <th>Page</th>
+            <th>Contact</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in items %}
+          <tr>
+            <td>{{ f.created_at.strftime('%d %b %Y, %H:%M') }}</td>
+            <td>{{ f.category }}</td>
+            <td>{{ f.title }}</td>
+            <td style="max-width:420px; white-space:pre-wrap;">{{ f.message }}</td>
+            <td>{{ f.page_url }}</td>
+            <td>{{ f.contact }}</td>
+            <td>{{ f.status }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty-state">No feedback yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

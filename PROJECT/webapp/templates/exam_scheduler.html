@@ -1,0 +1,96 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="main-title">Exam Scheduler</div>
+<div class="card timetable-card" style="max-width:600px;margin:0 auto;">
+    <h3>Book Exam (manual)</h3>
+    <form method="post">
+        <div class="input-row">
+            <label>Course:
+                <select name="course_id" required>
+                    {% for course in get_courses() %}
+                    <option value="{{ course.id }}">{{ course.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Date:
+                <input type="date" name="date" required />
+            </label>
+        </div>
+        <div class="input-row">
+            <label>Start Time:
+                <input type="time" name="start_time" required />
+            </label>
+            <label>End Time:
+                <input type="time" name="end_time" required />
+            </label>
+        </div>
+        <div class="input-row">
+            <label>Room:
+                <select name="room_id" required>
+                    {% for room in get_classrooms() %}
+                    <option value="{{ room.id }}">{{ room.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        </div>
+        <div class="button-row">
+            <button class="btn gradient-btn" type="submit">Book Exam</button>
+        </div>
+    </form>
+</div>
+
+<div class="card timetable-card" style="max-width:600px;margin:24px auto;">
+    <h3>Auto-generate Exams</h3>
+    <form method="post" action="{{ url_for('generate_exams') }}">
+        <div class="input-row">
+            <label>Days window:
+                <input type="number" name="days" value="5" min="1" max="14" />
+            </label>
+            <label>
+                <input type="checkbox" name="reset" value="true" /> Reset existing exams
+            </label>
+        </div>
+        <div class="button-row">
+            <button class="btn" type="submit">Generate Exam Schedule</button>
+        </div>
+    </form>
+    <div class="help-text" style="margin-top:8px;font-size:0.9em;color:#666;">
+        Generates one exam per course across the selected number of days, with 3 slots per day.
+    </div>
+    <form method="post" action="{{ url_for('reset_draft_exams') }}" style="margin-top:12px;">
+        <button class="btn btn-danger" type="submit">Clear Draft Exams</button>
+    </form>
+    <form method="post" action="{{ url_for('approve_exams') }}" style="margin-top:12px;">
+        <input type="text" name="name" placeholder="Schedule name (optional)" style="width:100%;padding:6px;margin-bottom:8px;" />
+        <input type="text" name="description" placeholder="Description (optional)" style="width:100%;padding:6px;margin-bottom:8px;" />
+        <button class="btn gradient-btn" type="submit">Approve and Publish</button>
+    </form>
+    {% if approved_exams %}
+    <div class="help-text" style="margin-top:8px;font-size:0.9em;color:#2a6;">An approved exam schedule exists ({{ approved_exams.approved_at.strftime('%Y-%m-%d') }}).</div>
+    {% endif %}
+</div>
+
+<div class="card timetable-card" style="max-width:800px;margin:32px auto 0;">
+    <h3>Scheduled Exams</h3>
+    {% if exams %}
+    <table class="teacher-table">
+        <thead>
+            <tr><th>Course</th><th>Date</th><th>Start</th><th>End</th><th>Room</th></tr>
+        </thead>
+        <tbody>
+        {% for exam in exams %}
+            <tr>
+                <td>{{ exam.course.name }}</td>
+                <td>{{ exam.date.strftime('%Y-%m-%d') }}</td>
+                <td>{{ exam.start_time }}</td>
+                <td>{{ exam.end_time }}</td>
+                <td>{{ exam.room.name }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">No exams scheduled yet.</div>
+    {% endif %}
+</div>
+{% endblock %}

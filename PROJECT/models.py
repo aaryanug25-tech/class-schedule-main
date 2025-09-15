@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, JSON
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from scheduler import Base
@@ -50,3 +50,47 @@ class ApprovedTimetable(Base):
     
     def __repr__(self):
         return f"<ApprovedTimetable(name={self.name}, approved_by={self.approved_by}, active={self.is_active})>"
+
+
+class Event(Base):
+    __tablename__ = 'events'
+    id = Column(Integer, primary_key=True)
+    title = Column(String, nullable=False)
+    description = Column(String)
+    room_id = Column(Integer, ForeignKey('classrooms.id'), nullable=False)
+    recurrence = Column(String, default='one-time')  # one-time | weekly | monthly
+    # For one-time
+    date = Column(DateTime, nullable=True)
+    # For recurring
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
+    day_of_week = Column(String, nullable=True)  # Monday..Sunday for weekly
+    day_of_month = Column(Integer, nullable=True)  # 1..31 for monthly
+    start_time = Column(String, nullable=False)  # HH:MM (24h)
+    end_time = Column(String, nullable=False)
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    room = relationship('Classroom')
+    creator = relationship('User')
+
+    def __repr__(self):
+        return f"<Event(title={self.title}, recurrence={self.recurrence}, room_id={self.room_id})>"
+
+
+class Feedback(Base):
+    __tablename__ = 'feedback'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    category = Column(String, nullable=False)  # bug, feature, idea, other
+    title = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    page_url = Column(String, nullable=True)
+    contact = Column(String, nullable=True)  # optional email/phone/handle
+    status = Column(String, default='new')  # new, triaged, in-progress, done
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship('User')
+
+    def __repr__(self):
+        return f"<Feedback(category={self.category}, title={self.title[:20]})>"

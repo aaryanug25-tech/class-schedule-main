@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container">
+  <h1 class="main-title">Syllabus: {{ course_name }}</h1>
+  <div class="card">
+    {% if course %}
+      <p>This is a placeholder syllabus page for <strong>{{ course.name }}</strong>. You can attach PDFs or links here.</p>
+    {% else %}
+      <p>Course not found in the database. Showing generic info for <strong>{{ course_name }}</strong>.</p>
+    {% endif %}
+    <ul>
+      <li>Overview: Topics and learning outcomes</li>
+      <li>Assessment: Exams, assignments, and projects</li>
+      <li>Resources: Textbooks and references</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

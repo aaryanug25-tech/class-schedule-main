@@ -6,7 +6,7 @@
         <form method="post">
             <div class="input-row">
                 <label>Day:</label>
-                <select name="day" required>
+                                <select name="day" id="day" required>
                     <option>Monday</option>
                     <option>Tuesday</option>
                     <option>Wednesday</option>
@@ -14,9 +14,9 @@
                     <option>Friday</option>
                 </select>
                 <label>Start:</label>
-                <input type="time" name="start_time" required>
+                                <input type="time" name="start_time" id="start_time" required>
                 <label>End:</label>
-                <input type="time" name="end_time" required>
+                                <input type="time" name="end_time" id="end_time" required>
                 <button class="btn gradient-btn" type="submit">Find</button>
             </div>
         </form>
@@ -31,5 +31,34 @@
     </div>
     <a href="/" class="btn gradient-btn" style="margin-top:24px;display:inline-block;">Back to Home</a>
 </div>
+<script>
+// Show real-time availability hints when fields change
+async function updateAvailabilityHint() {
+    const day = document.getElementById('day').value;
+    const start = document.getElementById('start_time').value;
+    const end = document.getElementById('end_time').value;
+    if (!(day && start && end)) return;
+    try {
+        const res = await fetch(`/api/availability?day=${encodeURIComponent(day)}&start_time=${encodeURIComponent(start)}&end_time=${encodeURIComponent(end)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const availableCount = data.rooms.filter(r => r.available).length;
+        let hint = document.getElementById('availability-hint');
+        if (!hint) {
+            hint = document.createElement('div');
+            hint.id = 'availability-hint';
+            hint.style.marginTop = '8px';
+            hint.style.opacity = '0.8';
+            document.querySelector('.card').prepend(hint);
+        }
+        hint.textContent = `${availableCount} rooms free for ${day} ${start}-${end}`;
+    } catch (e) { console.error(e); }
+}
+['day','start_time','end_time'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('change', updateAvailabilityHint);
+    el.addEventListener('blur', updateAvailabilityHint);
+});
+</script>
 {% endblock %}
 </html>

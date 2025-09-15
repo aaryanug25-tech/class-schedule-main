@@ -20,7 +20,7 @@
                     <td>{{ user.username }}</td>
                     <td>{% if user.is_admin() %}Yes{% else %}No{% endif %}</td>
                     <td>
-                        <form action="{{ url_for('admin_route') }}" method="post" style="display: inline;">
+                        <form action="{{ url_for('admin') }}" method="post" style="display: inline;">
                             <input type="hidden" name="user_id" value="{{ user.id }}">
                             <input type="hidden" name="action" value="toggle_admin">
                             <button type="submit" class="btn small">

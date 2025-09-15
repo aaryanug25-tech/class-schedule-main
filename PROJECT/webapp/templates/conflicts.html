@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<h1 class="main-title" style="text-align:center;">Conflict Management</h1>
+<div class="card timetable-card">
+  <div id="conflict-container" style="padding: 12px;"></div>
+  <div style="padding:12px; display:flex; gap:10px; flex-wrap:wrap;">
+    <a class="btn gradient-btn" href="{{ url_for('generate_timetable_route') }}">Regenerate Timetable</a>
+    <a class="btn gradient-btn" href="{{ url_for('index') }}">Back to Dashboard</a>
+  </div>
+</div>
+<script>
+async function loadConflicts(){
+  const res = await fetch("{{ url_for('api_timetable_conflicts') }}");
+  const data = await res.json();
+  const el = document.getElementById('conflict-container');
+  if(!data.conflicts || data.conflicts.length === 0){
+    el.innerHTML = '<p class="empty-state">No conflicts found. You are good to approve!</p>';
+    return;
+  }
+  const groups = {};
+  data.conflicts.forEach(c=>{
+    const key = `${c.type}|${c.resource}`;
+    groups[key] = groups[key] || { type:c.type, resource:c.resource, items:[] };
+    groups[key].items.push(c);
+  });
+  el.innerHTML = Object.values(groups).map(g=>{
+    return `<div class="coordinator-form" style="margin-bottom:12px;">
+      <h3 style="margin:0 0 8px 0;">${g.type} conflict: <span style="color:var(--accent);">${g.resource}</span></h3>
+      ${g.items.map(i=>{
+        const entries = i.entries.map(e=>`<li><strong>${e.class||''}</strong> - ${e.course||''} ${e.teacher?('by '+e.teacher):''} ${e.room?('in '+e.room):''}</li>`).join('');
+        return `<div style="margin-bottom:10px;">
+          <div style="color:var(--muted);">${i.day} ${i.start}-${i.end}</div>
+          <ul style="margin:6px 0 0 18px;">${entries}</ul>
+        </div>`
+      }).join('')}
+    </div>`
+  }).join('');
+}
+loadConflicts();
+</script>
+{% endblock %}

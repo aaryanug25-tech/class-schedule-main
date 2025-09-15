@@ -6,13 +6,13 @@
         <form method="post">
             <div class="input-row">
                 <label>Class Group:</label>
-                <select name="class_id" required>
+        <select name="class_id" id="class_id" required>
                     {% for c in classes %}
                     <option value="{{ c.id }}">{{ c.name }}</option>
                     {% endfor %}
                 </select>
                 <label>Course:</label>
-                <select name="course_id" required>
+        <select name="course_id" id="course_id" required>
                     {% for course in courses %}
                     <option value="{{ course.id }}">{{ course.name }}</option>
                     {% endfor %}
@@ -20,6 +20,7 @@
                 <button class="btn gradient-btn" type="submit">Suggest Options</button>
             </div>
         </form>
+    <div id="availability-tip" style="margin-top:8px; opacity:0.8;"></div>
         {% if options %}
         <h3 class="card-title" style="margin-top:24px;">Available Reschedule Options</h3>
         <ul>
@@ -31,5 +32,23 @@
     </div>
     <a href="/" class="btn gradient-btn" style="margin-top:24px;display:inline-block;">Back to Home</a>
 </div>
+<script>
+async function updateRescheduleAvailability() {
+    const day = 'Monday'; // could be driven by a future day selector
+    const start = '09:00';
+    const end = '10:00';
+    try {
+        const res = await fetch(`/api/availability?day=${encodeURIComponent(day)}&start_time=${encodeURIComponent(start)}&end_time=${encodeURIComponent(end)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const freeTeachers = data.teachers.filter(t => t.available).length;
+        const tip = document.getElementById('availability-tip');
+        tip.textContent = `${freeTeachers} teachers available for ${day} ${start}-${end}. Adjust times for better availability.`;
+    } catch (e) { console.error(e); }
+}
+document.getElementById('class_id').addEventListener('change', updateRescheduleAvailability);
+document.getElementById('course_id').addEventListener('change', updateRescheduleAvailability);
+updateRescheduleAvailability();
+</script>
 {% endblock %}
 </html>

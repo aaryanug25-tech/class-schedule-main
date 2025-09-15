@@ -78,6 +78,29 @@
     </div>
     {% endif %}
 
+    <div class="card" style="margin:16px 0; padding:12px;">
+        <form id="day-filter-form" method="get" action="{{ url_for('generate_timetable_route') }}" class="input-row" style="align-items:center; gap:12px; flex-wrap:wrap;">
+            <label><strong>View:</strong></label>
+            <label style="display:flex; align-items:center; gap:6px;">
+                <input type="radio" name="view" value="day" {% if view_mode != 'week' %}checked{% endif %} onchange="this.form.submit()"> Day
+            </label>
+            <label style="display:flex; align-items:center; gap:6px;">
+                <input type="radio" name="view" value="week" {% if view_mode == 'week' %}checked{% endif %} onchange="this.form.submit()"> Week
+            </label>
+            {% if view_mode != 'week' %}
+            <div id="day-picker">
+                <label for="day-select" style="margin-left:12px;"><strong>Day:</strong></label>
+                <select id="day-select" name="day" onchange="this.form.submit()">
+                    {% for d in all_days %}
+                    <option value="{{ d }}" {% if d == selected_day %}selected{% endif %}>{{ d }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <span style="opacity:0.7;">{% if view_mode == 'week' %}Showing full week{% else %}Defaulting to Today ({{ selected_day }}){% endif %}</span>
+        </form>
+    </div>
+
     {% for class_name, grid in timetable_data.items() %}
     <h3 class="class-heading">{{ class_name }}</h3>
     <div class="card timetable-card" style="overflow-x:auto; margin-bottom:32px;">
@@ -96,13 +119,13 @@
                     <td><b>{{ day }}</b></td>
                     {% for slot in time_slots %}
                     {% set cell = grid[slot][day] %}
-                    <td class="multi-course-cell {{ cell|course_color_class if cell }}" title="{% if cell %}{% if cell is string %}{{ cell|striptags }}{% elif cell is iterable %}{% for course in cell %}{% if course is string %}{{ course|striptags }}{% else %}{{ course }}{% endif %}{% if not loop.last %} | {% endif %}{% endfor %}{% else %}{{ cell }}{% endif %}{% endif %}">
+                    <td class="multi-course-cell {{ cell|course_color_class if cell }} timetable-cell" data-day="{{ day }}" data-start="{{ slot[0] }}" data-end="{{ slot[1] }}">
                         {% if cell %}
                             {% if cell is string %}
                                 {% set parts = cell.split('<br>') %}
                                 {% if parts|length >= 3 %}
-                                <div class="compact-cell">
-                                    <span class="course-name">{{ parts[0] }}</span>
+                                <div class="compact-cell" data-course="{{ parts[0] }}" data-teacher="{{ parts[1] }}" data-room="{{ parts[2] }}">
+                                    <span class="course-name"><a href="{{ url_for('course_syllabus', course_name=parts[0]) }}" class="syllabus-link" title="Open syllabus">{{ parts[0] }}</a></span>
                                     <span class="teacher-name">{{ parts[1] }}</span>
                                     <span class="room-name">
                                         <i class="room-icon"></i>{{ parts[2] }}
@@ -117,16 +140,16 @@
                                 {{ cell|replace('<br>', ' - ')|safe }}
                                 {% endif %}
                             {% elif cell is not iterable %}
-                                <div class="compact-cell">
-                                    <span class="course-name">{{ cell }}</span>
+                                <div class="compact-cell" data-course="{{ cell }}">
+                                    <span class="course-name"><a href="{{ url_for('course_syllabus', course_name=cell) }}" class="syllabus-link" title="Open syllabus">{{ cell }}</a></span>
                                 </div>
                             {% else %}
                                 {% for course in cell %}
-                                    <div class="course-entry {{ loop.index0|course_color_class }}">
+                                    <div class="course-entry {{ loop.index0|course_color_class }}" data-course="{{ (course.split('<br>')[0]) if course is string }}" data-teacher="{{ (course.split('<br>')[1]) if course is string and (course.split('<br>')|length)>=2 }}" data-room="{{ (course.split('<br>')[2]) if course is string and (course.split('<br>')|length)>=3 }}">
                                         {% if course is string %}
                                             {% set parts = course.split('<br>') %}
                                             {% if parts|length >= 3 %}
-                                            <span class="course-name">{{ parts[0] }}</span>
+                                            <span class="course-name"><a href="{{ url_for('course_syllabus', course_name=parts[0]) }}" class="syllabus-link" title="Open syllabus">{{ parts[0] }}</a></span>
                                             <span class="teacher-name">{{ parts[1][:10] }}</span>
                                             <span class="room-name">
                                                 <i class="room-icon"></i>{{ parts[2] }}
@@ -140,7 +163,7 @@
                                             {{ course|replace('<br>', ' - ')|safe }}
                                             {% endif %}
                                         {% else %}
-                                            <span class="course-name">{{ course }}</span>
+                                            <span class="course-name"><a href="{{ url_for('course_syllabus', course_name=course) }}" class="syllabus-link" title="Open syllabus">{{ course }}</a></span>
                                         {% endif %}
                                     </div>
                                     {% if not loop.last %}<hr class="course-divider">{% endif %}
@@ -309,6 +332,43 @@ document.addEventListener('DOMContentLoaded', function() {
             // Redirect to change room page with pre-filled values
             window.location.href = `/change_room?class=${encodeURIComponent(className)}&course=${encodeURIComponent(courseName)}&day=${encodeURIComponent(day)}&time_slot=${encodeURIComponent(timeSlot)}`;
         });
+    });
+
+    // Simple hover popover for timetable cells
+    const tooltip = document.createElement('div');
+    tooltip.style.position = 'fixed';
+    tooltip.style.padding = '8px 10px';
+    tooltip.style.background = 'var(--card-bg, #111827)';
+    tooltip.style.color = 'var(--text, #e5e7eb)';
+    tooltip.style.border = '1px solid var(--border, #374151)';
+    tooltip.style.borderRadius = '6px';
+    tooltip.style.fontSize = '12px';
+    tooltip.style.zIndex = '1000';
+    tooltip.style.pointerEvents = 'none';
+    tooltip.style.display = 'none';
+    document.body.appendChild(tooltip);
+
+    function showTooltip(e, html) {
+        tooltip.innerHTML = html;
+        tooltip.style.left = (e.clientX + 12) + 'px';
+        tooltip.style.top = (e.clientY + 12) + 'px';
+        tooltip.style.display = 'block';
+    }
+    function hideTooltip() { tooltip.style.display = 'none'; }
+
+    document.querySelectorAll('.timetable-cell .compact-cell, .timetable-cell .course-entry').forEach(el => {
+        el.addEventListener('mousemove', (e) => {
+            const course = el.getAttribute('data-course') || '';
+            const teacher = el.getAttribute('data-teacher') || '';
+            const room = el.getAttribute('data-room') || '';
+            const syllabusUrl = el.querySelector('.syllabus-link')?.getAttribute('href') || '#';
+            const html = `<div><strong>${course}</strong></div>`+
+                         (teacher ? `<div>Teacher: ${teacher}</div>` : '')+
+                         (room ? `<div>Room: ${room}</div>` : '')+
+                         `<div><a href="${syllabusUrl}" style="color:#60a5fa;">View syllabus</a></div>`;
+            showTooltip(e, html);
+        });
+        el.addEventListener('mouseleave', hideTooltip);
     });
 });
 </script>

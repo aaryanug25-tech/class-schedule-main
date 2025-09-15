@@ -1,0 +1,164 @@
+{% extends "layout.html" %}
+
+{% block title %}Conflict Management{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h2>Timetable Conflict Management</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-white">
+            <h4>Current Conflicts</h4>
+        </div>
+        <div class="card-body">
+            <div id="conflicts-container">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Loading conflicts...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4" id="resolution-panel" style="display:none;">
+        <div class="card-header bg-success text-white">
+            <h4>Conflict Resolution</h4>
+        </div>
+        <div class="card-body" id="resolution-content">
+            <!-- Resolution content will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<template id="conflict-item-template">
+    <div class="card mb-3 conflict-item">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="conflict-type"></h5>
+            <span class="badge bg-danger">Conflict</span>
+        </div>
+        <div class="card-body">
+            <p><strong>Name:</strong> <span class="conflict-name"></span></p>
+            <p><strong>Day:</strong> <span class="conflict-day"></span></p>
+            <p><strong>Time:</strong> <span class="conflict-time"></span></p>
+            <p><strong>Details:</strong> <span class="conflict-details"></span></p>
+            <button class="btn btn-primary resolve-btn">Resolve This Conflict</button>
+        </div>
+    </div>
+</template>
+
+<template id="no-conflicts-template">
+    <div class="alert alert-success">
+        <h5>No conflicts found!</h5>
+        <p>Your timetable is free of scheduling conflicts.</p>
+    </div>
+</template>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch conflicts from API
+    fetchConflicts();
+    
+    // Set up event delegation for resolve buttons
+    document.getElementById('conflicts-container').addEventListener('click', function(e) {
+        if (e.target.classList.contains('resolve-btn')) {
+            const conflictItem = e.target.closest('.conflict-item');
+            const conflictData = {
+                type: conflictItem.querySelector('.conflict-type').textContent,
+                name: conflictItem.querySelector('.conflict-name').textContent,
+                day: conflictItem.querySelector('.conflict-day').textContent,
+                time: conflictItem.querySelector('.conflict-time').textContent.split(' - ')
+            };
+            showResolutionPanel(conflictData);
+        }
+    });
+});
+
+function fetchConflicts() {
+    fetch('/api/timetable-conflicts')
+        .then(response => response.json())
+        .then(data => {
+            renderConflicts(data.conflicts);
+        })
+        .catch(error => {
+            document.getElementById('conflicts-container').innerHTML = `
+                <div class="alert alert-danger">
+                    <p>Failed to load conflicts: ${error.message}</p>
+                </div>
+            `;
+        });
+}
+
+function renderConflicts(conflicts) {
+    const container = document.getElementById('conflicts-container');
+    container.innerHTML = '';
+    
+    if (conflicts.length === 0) {
+        const noConflictsTemplate = document.getElementById('no-conflicts-template');
+        container.appendChild(noConflictsTemplate.content.cloneNode(true));
+        return;
+    }
+    
+    conflicts.forEach(conflict => {
+        const template = document.getElementById('conflict-item-template');
+        const conflictItem = template.content.cloneNode(true);
+        
+        conflictItem.querySelector('.conflict-type').textContent = conflict.type;
+        conflictItem.querySelector('.conflict-name').textContent = conflict.name;
+        conflictItem.querySelector('.conflict-day').textContent = conflict.day;
+        conflictItem.querySelector('.conflict-time').textContent = `${conflict.start} - ${conflict.end}`;
+        conflictItem.querySelector('.conflict-details').textContent = conflict.details;
+        
+        container.appendChild(conflictItem);
+    });
+}
+
+function showResolutionPanel(conflictData) {
+    const panel = document.getElementById('resolution-panel');
+    const content = document.getElementById('resolution-content');
+    
+    // Show the resolution panel
+    panel.style.display = 'block';
+    
+    // Generate resolution options based on conflict type
+    content.innerHTML = `
+        <h5>Resolving conflict for ${conflictData.type} "${conflictData.name}"</h5>
+        <p>Day: ${conflictData.day}, Time: ${conflictData.time[0]} - ${conflictData.time[1]}</p>
+        
+        <div class="mt-3">
+            <h6>Resolution Options:</h6>
+            <div class="list-group">
+                <button class="list-group-item list-group-item-action" onclick="rescheduleClass('${conflictData.type}', '${conflictData.name}', '${conflictData.day}', '${conflictData.time[0]}')">
+                    Reschedule this class
+                </button>
+                <button class="list-group-item list-group-item-action" onclick="changeRoom('${conflictData.type}', '${conflictData.name}', '${conflictData.day}', '${conflictData.time[0]}')">
+                    Change room assignment
+                </button>
+                <button class="list-group-item list-group-item-action" onclick="cancelClass('${conflictData.type}', '${conflictData.name}', '${conflictData.day}', '${conflictData.time[0]}')">
+                    Cancel this class
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Scroll to resolution panel
+    panel.scrollIntoView({ behavior: 'smooth' });
+}
+
+function rescheduleClass(type, name, day, time) {
+    window.location.href = `/reschedule?type=${type}&name=${encodeURIComponent(name)}&day=${day}&time=${time}`;
+}
+
+function changeRoom(type, name, day, time) {
+    window.location.href = `/change_room?type=${type}&name=${encodeURIComponent(name)}&day=${day}&time=${time}`;
+}
+
+function cancelClass(type, name, day, time) {
+    window.location.href = `/cancel_class?type=${type}&name=${encodeURIComponent(name)}&day=${day}&time=${time}`;
+}
+</script>
+{% endblock %}
+
+{% endblock %}
