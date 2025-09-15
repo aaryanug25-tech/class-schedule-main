@@ -4,10 +4,6 @@
 
 A web-based platform for automated class scheduling in higher education institutions. It allows authorized users to input classrooms, courses, teachers, and class groups, and generates an optimized, color-coded timetable. Teachers can also find available rooms for extra classes and suggest rescheduling options.
 
-**Now safe for public repositories:**
-- All file/database paths are relative (no user-specific or absolute paths)
-- `.gitignore` excludes the database, cache, and secrets by default
-- No sensitive or personal data is included in the codebase
 
 ---
 
@@ -140,9 +136,7 @@ PROJECT/
 
 
 ## Notes
-- All data is stored locally in `scheduler.db` (which is ignored by git).
 - To start fresh, delete `scheduler.db` and restart the app.
-- **Privacy:** No personal or sensitive data is included. Do not commit real user data or secrets.
 
 ## License
 MIT License
