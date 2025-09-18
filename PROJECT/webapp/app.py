@@ -1,4 +1,5 @@
 import os
+import secrets
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from markupsafe import Markup
 import sys
@@ -18,7 +19,16 @@ from io import TextIOWrapper
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
 app.secret_key = 'your_secret_key'  # Change this to a random secret key
-session = get_session()  # Will use default relative path
+app.config['JSON_SORT_KEYS'] = False  # Preserve JSON order for timetable data
+
+# Use relative path for the database (relative to PROJECT directory)
+# Add parent directory to sys.path so imports work correctly
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+# Use the default get_session behavior which looks for scheduler.db in the current directory
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Change to PROJECT directory
+print(f"DEBUG: Working directory set to {os.getcwd()}")
+session = get_session()
 
 # Exam model for scheduling exams
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Boolean, DateTime, Text
@@ -542,6 +552,81 @@ def events_scheduler():
 def events_scheduler_legacy():
     return redirect(url_for('events_scheduler'))
 
+# --- Event Scheduler: Add Recurring and Special Event routes ---
+@app.route('/add_recurring_event', methods=['POST'])
+def add_recurring_event():
+    try:
+        name = request.form.get('name')
+        description = request.form.get('description')
+        teacher_id = request.form.get('teacher_id') or None
+        classroom_id = request.form.get('classroom_id')
+        day = request.form.get('day')
+        start_time = request.form.get('start_time')
+        end_time = request.form.get('end_time')
+        recurrence_type = request.form.get('recurrence_type')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date') or None
+
+        # Convert types
+        teacher_id = int(teacher_id) if teacher_id else None
+        classroom_id = int(classroom_id) if classroom_id else None
+        start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
+        end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None
+
+        event = Event(
+            name=name,
+            description=description,
+            teacher_id=teacher_id,
+            classroom_id=classroom_id,
+            day=day,
+            start_time=start_time,
+            end_time=end_time,
+            recurrence_type=recurrence_type,
+            start_date=start_date,
+            end_date=end_date
+        )
+        session.add(event)
+        session.commit()
+        flash('Recurring event added successfully.', 'success')
+    except Exception as ex:
+        session.rollback()
+        flash(f'Failed to add recurring event: {ex}', 'danger')
+    return redirect(url_for('events_scheduler'))
+
+@app.route('/add_special_event', methods=['POST'])
+def add_special_event():
+    try:
+        name = request.form.get('name')
+        description = request.form.get('description')
+        teacher_id = request.form.get('teacher_id') or None
+        classroom_id = request.form.get('classroom_id')
+        date = request.form.get('date')
+        start_time = request.form.get('start_time')
+        end_time = request.form.get('end_time')
+
+        # Convert types
+        teacher_id = int(teacher_id) if teacher_id else None
+        classroom_id = int(classroom_id) if classroom_id else None
+        date = datetime.datetime.strptime(date, '%Y-%m-%d').date() if date else None
+
+        event = Event(
+            name=name,
+            description=description,
+            teacher_id=teacher_id,
+            classroom_id=classroom_id,
+            date=date,
+            start_time=start_time,
+            end_time=end_time,
+            recurrence_type='special'
+        )
+        session.add(event)
+        session.commit()
+        flash('Special event added successfully.', 'success')
+    except Exception as ex:
+        session.rollback()
+        flash(f'Failed to add special event: {ex}', 'danger')
+    return redirect(url_for('events_scheduler'))
+
 @app.route('/add_classroom', methods=['GET', 'POST'])
 def add_classroom_route():
     if request.method == 'POST':
@@ -726,6 +811,9 @@ def generate_timetable_route():
     # Get current datetime for the template
     current_date_time = datetime.datetime.now().strftime('%d %b %Y')
     
+    # Generate a CSRF token for AJAX requests
+    csrf_token = secrets.token_hex(16)
+    
     return render_template('timetable.html', 
                           timetable_data=timetable_data, 
                           days=days, 
@@ -738,22 +826,85 @@ def generate_timetable_route():
                           active_timetable=active_timetable if not regenerate else None,
                           selected_day=selected_day,
                           view_mode=view_mode,
-                          current_date_time=current_date_time)
+                          current_date_time=current_date_time,
+                          csrf_token=csrf_token)
 
 @app.route('/find_rooms', methods=['GET', 'POST'])
 def find_rooms_route():
     available = []
     if request.method == 'POST':
-        day = request.form['day']
-        start = request.form['start_time']
-        end = request.form['end_time']
-        available = find_available_rooms(session, day, start, end)
+        try:
+            day = request.form['day']
+            start = request.form['start_time']
+            end = request.form['end_time']
+            
+            # Basic validation
+            if start and end:
+                # Convert time strings to minutes for comparison
+                def time_to_minutes(time_str):
+                    hours, minutes = map(int, time_str.split(':'))
+                    return hours * 60 + minutes
+                
+                start_minutes = time_to_minutes(start)
+                end_minutes = time_to_minutes(end)
+                
+                # Check that end time is after start time
+                if end_minutes <= start_minutes:
+                    flash(f"End time must be after start time", "danger")
+                    return render_template('find_rooms.html', available=[])
+            
+            print(f"DEBUG: Finding rooms available for the entire duration {day} {start}-{end}")
+            
+            # Convert time format if needed (e.g., "13:45" from time input)
+            # HTML time inputs use 24-hour format like "13:45"
+            if start and ':' in start:
+                hours, minutes = start.split(':')
+                start_formatted = f"{hours.zfill(2)}:{minutes.zfill(2)}"
+            else:
+                start_formatted = start
+                
+            if end and ':' in end:
+                hours, minutes = end.split(':')
+                end_formatted = f"{hours.zfill(2)}:{minutes.zfill(2)}"
+            else:
+                end_formatted = end
+                
+            # Find available rooms for the entire time range
+            available = find_available_rooms(session, day, start_formatted, end_formatted)
+            print(f"DEBUG: Found {len(available)} available rooms for the entire duration")
+            
+            # Calculate duration for user feedback
+            start_minutes = time_to_minutes(start)
+            end_minutes = time_to_minutes(end)
+            duration_minutes = end_minutes - start_minutes
+            duration_hours = duration_minutes // 60
+            duration_min_remainder = duration_minutes % 60
+            
+            duration_text = ""
+            if duration_hours > 0:
+                duration_text += f"{duration_hours} hour{'s' if duration_hours != 1 else ''}"
+            if duration_min_remainder > 0:
+                duration_text += f" {duration_min_remainder} minute{'s' if duration_min_remainder != 1 else ''}"
+                
+            # Check if we found any rooms
+            if not available:
+                flash(f"No rooms are available for the entire {duration_text.strip()} on {day} from {start} to {end}. Try a shorter time period.", "info")
+            else:
+                flash(f"Found {len(available)} rooms available for the entire {duration_text.strip()} on {day} from {start} to {end}.", "success")
+                
+        except Exception as e:
+            print(f"ERROR in find_rooms_route: {str(e)}")
+            flash(f"An error occurred while searching for rooms: {str(e)}", "danger")
+    
     return render_template('find_rooms.html', available=available)
 
 @app.route('/api/availability')
 def api_availability():
     """Return availability for rooms and teachers for a given day/time slot.
     Query params: day=Monday&start_time=HH:MM&end_time=HH:MM
+    
+    This API checks for exact time slot matches, not the entire range between times.
+    For full range checking, use the find_available_rooms function.
     """
     day = request.args.get('day')
     start_time = request.args.get('start_time')
@@ -1065,7 +1216,13 @@ def course_coordinator():
 
 @app.route('/teachers')
 def teachers():
-    return render_template('teachers.html')
+    # Use the globally defined session object with proper path to the database
+    teachers_list = session.query(Teacher).all()
+    print(f"DEBUG: Found {len(teachers_list)} teachers for template")
+    # Simple debug output of first few teachers
+    for t in teachers_list[:3]:
+        print(f"DEBUG: Teacher - {t.name} ({t.subject})")
+    return render_template('teachers.html', teachers=teachers_list)
 
 @app.route('/analytics')
 def analytics_page():
@@ -1359,8 +1516,9 @@ def teacher_timetable(teacher_id):
                     cell = class_grid.get(slot_key, {}).get(day)
                     
                     if cell:
-                        # Format might be either a string like "Course<br>Teacher<br>Room" or a list of such strings
+                        # Handle different possible formats
                         if isinstance(cell, str):
+                            # Format: "Course<br>Teacher<br>Room"
                             parts = cell.split('<br>')
                             if len(parts) >= 2 and teacher.name in parts[1]:
                                 # Initialize the day dict if not present
@@ -1374,17 +1532,41 @@ def teacher_timetable(teacher_id):
                                     'room': parts[2] if len(parts) > 2 else "N/A"
                                 }
                         elif isinstance(cell, list):
+                            # Handle list of items
                             for item in cell:
-                                parts = item.split('<br>')
-                                if len(parts) >= 2 and teacher.name in parts[1]:
-                                    if day not in teacher_schedule:
-                                        teacher_schedule[day] = {}
-                                    
-                                    teacher_schedule[day][slot_key] = {
-                                        'class': class_name,
-                                        'course': parts[0],
-                                        'room': parts[2] if len(parts) > 2 else "N/A"
-                                    }
+                                # Each item could be string or dict
+                                if isinstance(item, str):
+                                    parts = item.split('<br>')
+                                    if len(parts) >= 2 and teacher.name in parts[1]:
+                                        if day not in teacher_schedule:
+                                            teacher_schedule[day] = {}
+                                        
+                                        teacher_schedule[day][slot_key] = {
+                                            'class': class_name,
+                                            'course': parts[0],
+                                            'room': parts[2] if len(parts) > 2 else "N/A"
+                                        }
+                                elif isinstance(item, dict):
+                                    if 'teacher' in item and teacher.name in item['teacher']:
+                                        if day not in teacher_schedule:
+                                            teacher_schedule[day] = {}
+                                        
+                                        teacher_schedule[day][slot_key] = {
+                                            'class': class_name,
+                                            'course': item.get('course', 'Unknown'),
+                                            'room': item.get('classroom', 'N/A')
+                                        }
+                        elif isinstance(cell, dict):
+                            # Format: {"course": "...", "teacher": "...", "classroom": "..."}
+                            if 'teacher' in cell and teacher.name in cell['teacher']:
+                                if day not in teacher_schedule:
+                                    teacher_schedule[day] = {}
+                                
+                                teacher_schedule[day][slot_key] = {
+                                    'class': class_name,
+                                    'course': cell.get('course', 'Unknown'),
+                                    'room': cell.get('classroom', 'N/A')
+                                }
         
     return render_template('teacher_timetable.html', 
                           teacher=teacher, 
@@ -1537,6 +1719,108 @@ def activate_timetable(id):
         flash('Error activating timetable.', 'danger')
         return redirect(url_for('approved_timetables'))
 
+@app.route('/update_timetable_slot', methods=['POST'])
+def update_timetable_slot():
+    """Handle AJAX requests for drag-and-drop timetable updates."""
+    # Only allow admin and coordinator to update timetable
+    # if not current_user.is_authenticated or not (current_user.is_admin or current_user.is_coordinator):
+    #    return jsonify({'success': False, 'error': 'Unauthorized access'}), 403
+    
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+            
+        # Required fields
+        class_group = data.get('class_group')
+        subject = data.get('subject')
+        teacher = data.get('teacher')
+        room = data.get('room')
+        day = data.get('day')
+        time_slot = data.get('time_slot')
+        original_day = data.get('original_day')
+        original_time = data.get('original_time')
+        
+        # Validate the data
+        if not all([class_group, day, time_slot]):
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+            
+        # Get active timetable
+        active_timetable = session.query(ApprovedTimetable).filter_by(is_active=True).first()
+        if not active_timetable:
+            # If no approved timetable, get the current draft
+            timetable_data = get_current_timetable_data(session)
+        else:
+            timetable_data = json.loads(active_timetable.timetable_data)
+            
+        # Check if we're in edit mode (using an approved timetable)
+        is_edit_mode = active_timetable is not None
+        
+        # Update the timetable data
+        if class_group in timetable_data:
+            # Format the cell data based on what's already in the timetable
+            # (different timetables might use different formats)
+            if original_day and original_time:
+                # Remove from original position
+                time_key = original_time
+                if time_key in timetable_data[class_group] and day in timetable_data[class_group][time_key]:
+                    timetable_data[class_group][time_key][original_day] = '-'
+            
+            # Add to new position
+            if time_slot not in timetable_data[class_group]:
+                timetable_data[class_group][time_slot] = {d: '-' for d in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]}
+                
+            # The format could be string, dict, or list based on how the timetable was generated
+            # Check the existing format and match it
+            sample_cell = None
+            for t in timetable_data[class_group]:
+                for d in timetable_data[class_group][t]:
+                    if timetable_data[class_group][t][d] and timetable_data[class_group][t][d] != '-':
+                        sample_cell = timetable_data[class_group][t][d]
+                        break
+                if sample_cell:
+                    break
+                    
+            # Create new cell data based on the existing format
+            if isinstance(sample_cell, dict):
+                cell_data = {
+                    'course': subject,
+                    'teacher': teacher,
+                    'classroom': room
+                }
+            elif isinstance(sample_cell, list):
+                # If it's a list, check the first item's format
+                if sample_cell and isinstance(sample_cell[0], dict):
+                    cell_data = [{
+                        'course': subject,
+                        'teacher': teacher,
+                        'classroom': room
+                    }]
+                else:
+                    # Assume string items in list
+                    cell_data = [f"{subject}<br>{teacher}<br>{room}"]
+            else:
+                # Default to string format if no sample or unrecognized format
+                cell_data = f"{subject}<br>{teacher}<br>{room}"
+                
+            timetable_data[class_group][time_slot][day] = cell_data
+            
+            # If we're in edit mode, save the updated timetable
+            if is_edit_mode:
+                active_timetable.timetable_data = json.dumps(timetable_data)
+                session.commit()
+                
+            return jsonify({
+                'success': True, 
+                'message': f'Updated {subject} for {class_group} on {day} at {time_slot}'
+            })
+        else:
+            return jsonify({'success': False, 'error': f'Class group {class_group} not found in timetable'}), 404
+            
+    except Exception as e:
+        session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=8080)
+    app.run(debug=True, host="0.0.0.0", port=8081)
 

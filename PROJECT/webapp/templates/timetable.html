@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 
-{% block head_extra %}
+{% block head %}
     {% if theme == 'dark' %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -8,6 +8,12 @@
         });
     </script>
     {% endif %}
+    
+    <!-- CSRF Token for AJAX requests -->
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    
+    <!-- Add drag and drop CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='drag-drop.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -119,46 +125,63 @@
                     <td><b>{{ day }}</b></td>
                     {% for slot in time_slots %}
                     {% set cell = grid[slot][day] %}
-                    <td class="multi-course-cell {{ cell|course_color_class if cell }} timetable-cell" data-day="{{ day }}" data-start="{{ slot[0] }}" data-end="{{ slot[1] }}">
+                    {% set slot_key = slot[0] + "-" + slot[1] %}
+                    <td class="multi-course-cell {{ cell|course_color_class if cell }} timetable-cell schedule-cell" data-day="{{ day }}" data-start="{{ slot[0] }}" data-end="{{ slot[1] }}" data-time="{{ slot_key }}" id="cell-{{ class_name }}-{{ day }}-{{ slot_key }}">
                         {% if cell %}
                             {% if cell is string %}
                                 {% set parts = cell.split('<br>') %}
                                 {% if parts|length >= 3 %}
-                                <div class="compact-cell" data-course="{{ parts[0] }}" data-teacher="{{ parts[1] }}" data-room="{{ parts[2] }}">
-                                    <span class="course-name"><a href="{{ url_for('course_syllabus', course_name=parts[0]) }}" class="syllabus-link" title="Open syllabus">{{ parts[0] }}</a></span>
+                                <div class="compact-cell subject-block" data-course="{{ parts[0] }}" data-teacher="{{ parts[1] }}" data-room="{{ parts[2] }}" data-class="{{ class_name }}" id="block-{{ class_name }}-{{ day }}-{{ slot_key }}">
+                                    <span class="course-name subject-name"><a href="{{ url_for('course_syllabus', course_name=parts[0]) }}" class="syllabus-link" title="Open syllabus">{{ parts[0] }}</a></span>
                                     <span class="teacher-name">{{ parts[1] }}</span>
-                                    <span class="room-name">
-                                        <i class="room-icon"></i>{{ parts[2] }}
-                                        <a href="#" class="change-room-link" data-class="{{ class_name }}" 
-                                          data-course="{{ parts[0] }}" data-day="{{ day }}" 
-                                          data-slot="{{ slot[0] }}-{{ slot[1] }}" title="Change Room">
-                                            <i class="fas fa-exchange-alt"></i>
-                                        </a>
-                                    </span>
+                                    <div class="class-details">
+                                        <span class="class-badge">{{ class_name }}</span>
+                                        <span class="room-badge">
+                                            Room: {{ parts[2] }}
+                                            <a href="#" class="change-room-link" data-class="{{ class_name }}" 
+                                              data-course="{{ parts[0] }}" data-day="{{ day }}" 
+                                              data-slot="{{ slot_key }}" title="Change Room">
+                                                <i class="fas fa-exchange-alt"></i>
+                                            </a>
+                                        </span>
+                                    </div>
                                 </div>
                                 {% else %}
-                                {{ cell|replace('<br>', ' - ')|safe }}
+                                <div class="subject-block" data-course="{{ cell }}" data-class="{{ class_name }}" id="block-{{ class_name }}-{{ day }}-{{ slot_key }}">
+                                    {{ cell|replace('<br>', ' - ')|safe }}
+                                </div>
                                 {% endif %}
                             {% elif cell is not iterable %}
-                                <div class="compact-cell" data-course="{{ cell }}">
-                                    <span class="course-name"><a href="{{ url_for('course_syllabus', course_name=cell) }}" class="syllabus-link" title="Open syllabus">{{ cell }}</a></span>
+                                <div class="compact-cell subject-block" data-course="{{ cell }}" data-class="{{ class_name }}" id="block-{{ class_name }}-{{ day }}-{{ slot_key }}">
+                                    <span class="course-name subject-name"><a href="{{ url_for('course_syllabus', course_name=cell) }}" class="syllabus-link" title="Open syllabus">{{ cell }}</a></span>
+                                    <div class="class-details">
+                                        <span class="class-badge">{{ class_name }}</span>
+                                    </div>
                                 </div>
                             {% else %}
                                 {% for course in cell %}
-                                    <div class="course-entry {{ loop.index0|course_color_class }}" data-course="{{ (course.split('<br>')[0]) if course is string }}" data-teacher="{{ (course.split('<br>')[1]) if course is string and (course.split('<br>')|length)>=2 }}" data-room="{{ (course.split('<br>')[2]) if course is string and (course.split('<br>')|length)>=3 }}">
+                                    <div class="course-entry subject-block {{ loop.index0|course_color_class }}" 
+                                         data-course="{{ (course.split('<br>')[0]) if course is string }}"
+                                         data-teacher="{{ (course.split('<br>')[1]) if course is string and (course.split('<br>')|length)>=2 }}"
+                                         data-room="{{ (course.split('<br>')[2]) if course is string and (course.split('<br>')|length)>=3 }}"
+                                         data-class="{{ class_name }}"
+                                         id="block-{{ class_name }}-{{ day }}-{{ slot_key }}-{{ loop.index0 }}">
                                         {% if course is string %}
                                             {% set parts = course.split('<br>') %}
                                             {% if parts|length >= 3 %}
-                                            <span class="course-name"><a href="{{ url_for('course_syllabus', course_name=parts[0]) }}" class="syllabus-link" title="Open syllabus">{{ parts[0] }}</a></span>
+                                            <span class="course-name subject-name"><a href="{{ url_for('course_syllabus', course_name=parts[0]) }}" class="syllabus-link" title="Open syllabus">{{ parts[0] }}</a></span>
                                             <span class="teacher-name">{{ parts[1][:10] }}</span>
-                                            <span class="room-name">
-                                                <i class="room-icon"></i>{{ parts[2] }}
-                                                <a href="#" class="change-room-link" data-class="{{ class_name }}" 
-                                                  data-course="{{ parts[0] }}" data-day="{{ day }}" 
-                                                  data-slot="{{ slot[0] }}-{{ slot[1] }}" title="Change Room">
-                                                    <i class="fas fa-exchange-alt"></i>
-                                                </a>
-                                            </span>
+                                            <div class="class-details">
+                                                <span class="class-badge">{{ class_name }}</span>
+                                                <span class="room-badge">
+                                                    Room: {{ parts[2] }}
+                                                    <a href="#" class="change-room-link" data-class="{{ class_name }}" 
+                                                      data-course="{{ parts[0] }}" data-day="{{ day }}" 
+                                                      data-slot="{{ slot_key }}" title="Change Room">
+                                                        <i class="fas fa-exchange-alt"></i>
+                                                    </a>
+                                                </span>
+                                            </div>
                                             {% else %}
                                             {{ course|replace('<br>', ' - ')|safe }}
                                             {% endif %}
@@ -372,4 +395,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+{% if is_coordinator %}
+<!-- Include drag and drop functionality for admin/coordinator users only -->
+<script src="{{ url_for('static', filename='drag-drop-timetable.js') }}"></script>
+{% endif %}
+
 {% endblock content %}

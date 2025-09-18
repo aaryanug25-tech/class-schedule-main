@@ -1,5 +1,10 @@
 {% extends "layout.html" %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='teacher-timetable.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+{% endblock %}
+
 {% block content %}
 <div class="container timetable-container">
     <div class="timetable-header professional">
@@ -18,7 +23,7 @@
     
     {% if active_timetable %}
     <div class="approval-status approved">
-        <i class="fas fa-check-circle"></i> Schedule from timetable approved by {{ active_timetable.approver.username }} on {{ active_timetable.approved_at.strftime('%d %b %Y') }}
+        <i class="fas fa-check-circle"></i> Schedule from approved timetable
     </div>
     {% endif %}
     
