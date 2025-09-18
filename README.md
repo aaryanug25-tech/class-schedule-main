@@ -212,7 +212,6 @@ PROJECT/
 
 ## Notes
 - To start fresh, delete `scheduler.db` and restart the app.
-- The application uses relative paths throughout, making it compatible with GitHub repositories.
 - The drag-and-drop interface requires a modern browser that supports HTML5 drag-and-drop API.
 - Automatic conflict detection helps prevent scheduling errors in real-time.
 
